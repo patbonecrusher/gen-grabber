@@ -43,11 +43,10 @@ enum AIParserService {
         }
 
         let prompt = """
-            Extract the year and the original document filename from this genealogy record screenshot. \
-            The date is in the top-right corner (e.g. '21-Jan-1808' — extract just the year: 1808). \
-            The original document filename is below the date, something like 'd1p_25401281.jpg' — \
-            extract just the ID without the .jpg extension (e.g. d1p_25401281). \
-            Respond in JSON only: {"year": "1808", "recordID": "d1p_25401281"}
+            Look at this genealogy record screenshot carefully. \
+            Find the date in the top-right area and extract ONLY the 4-digit year. \
+            Find the original document filename link (looks like d1p_NNNNNNN.jpg) and extract the ID without .jpg. \
+            Return ONLY a JSON object with the actual values you see: {"year": "YYYY", "recordID": "d1p_NNNNNNN"}
             """
 
         let body: [String: Any] = [

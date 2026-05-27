@@ -8,6 +8,7 @@ struct ImageColumnView: View {
     @State private var isParsing = false
     @State private var parseResult: ParsedRecord?
     @State private var parseTabID: UUID?
+    @State private var parseTabLabel: String = ""
     @State private var showParseConfirmation = false
     @State private var parseError: String?
     @State private var showParseError = false
@@ -70,7 +71,7 @@ struct ImageColumnView: View {
             }
         } message: {
             if let result = parseResult {
-                Text("Year: \(result.year)\nRecord ID: \(result.recordID)")
+                Text("Tab: \(parseTabLabel)\nYear: \(result.year)\nRecord ID: \(result.recordID)")
             }
         }
         .alert("Parse Error", isPresented: $showParseError) {
@@ -88,8 +89,18 @@ struct ImageColumnView: View {
         let token = aiSettings.token
         let model = aiSettings.model
 
+        // Debug: save the image being sent so we can verify
+        if let tiffData = image.tiffRepresentation,
+           let bitmap = NSBitmapImageRep(data: tiffData),
+           let pngData = bitmap.representation(using: .png, properties: [:]) {
+            let debugURL = URL(fileURLWithPath: "/tmp/gengrabber-parse-debug.png")
+            try? pngData.write(to: debugURL)
+            print("DEBUG: Saved parse image to /tmp/gengrabber-parse-debug.png (\(pngData.count) bytes)")
+        }
+
         isParsing = true
         parseTabID = currentTabID
+        parseTabLabel = session.tabLabel(for: session.tabs[tabIndex])
 
         Task {
             do {
