@@ -12,9 +12,9 @@ struct FilenameBuilderTests {
 
         let filenames = FilenameBuilder.filenames(for: tab, people: [groom, bride])
 
-        #expect(filenames.lafrance == "1732-(w)-girard-joseph-vanasse-marie-anne-d1p_1142c0453-lafrance.png")
-        #expect(filenames.pages[0].record == "1732-(w)-girard-joseph-vanasse-marie-anne-d1p_1142c0453.png")
-        #expect(filenames.pages[0].closeups == ["1732-(w)-girard-joseph-vanasse-marie-anne-d1p_1142c0453-closeup.png"])
+        #expect(filenames.lafrance == "1732-w-girard-joseph-vanasse-marie-anne-d1p_1142c0453-lafrance.png")
+        #expect(filenames.pages[0].record == "1732-w-girard-joseph-vanasse-marie-anne-d1p_1142c0453.png")
+        #expect(filenames.pages[0].closeups == ["1732-w-girard-joseph-vanasse-marie-anne-d1p_1142c0453-closeup.png"])
     }
 
     @Test("Multi-page wedding with different record IDs")
@@ -27,11 +27,11 @@ struct FilenameBuilderTests {
 
         let filenames = FilenameBuilder.filenames(for: tab, people: [groom, bride])
 
-        #expect(filenames.lafrance == "1787-(w)-languirand-pierre-levasseur-marie-anne-d1p_03871069-lafrance.png")
-        #expect(filenames.pages[0].record == "1787-(w)-languirand-pierre-levasseur-marie-anne-d1p_03871069.png")
-        #expect(filenames.pages[0].closeups == ["1787-(w)-languirand-pierre-levasseur-marie-anne-d1p_03871069-closeup.png"])
-        #expect(filenames.pages[1].record == "1787-(w)-languirand-pierre-levasseur-marie-anne-d1p_03871070.png")
-        #expect(filenames.pages[1].closeups == ["1787-(w)-languirand-pierre-levasseur-marie-anne-d1p_03871070-closeup.png"])
+        #expect(filenames.lafrance == "1787-w-languirand-pierre-levasseur-marie-anne-d1p_03871069-lafrance.png")
+        #expect(filenames.pages[0].record == "1787-w-languirand-pierre-levasseur-marie-anne-d1p_03871069.png")
+        #expect(filenames.pages[0].closeups == ["1787-w-languirand-pierre-levasseur-marie-anne-d1p_03871069-closeup.png"])
+        #expect(filenames.pages[1].record == "1787-w-languirand-pierre-levasseur-marie-anne-d1p_03871070.png")
+        #expect(filenames.pages[1].closeups == ["1787-w-languirand-pierre-levasseur-marie-anne-d1p_03871070-closeup.png"])
     }
 
     @Test("Birth filenames")
@@ -42,8 +42,8 @@ struct FilenameBuilderTests {
 
         let filenames = FilenameBuilder.filenames(for: tab, people: [person])
 
-        #expect(filenames.lafrance == "1845-(b)-girard-joseph-12345-lafrance.png")
-        #expect(filenames.pages[0].record == "1845-(b)-girard-joseph-12345.png")
+        #expect(filenames.lafrance == "1845-b-girard-joseph-12345-lafrance.png")
+        #expect(filenames.pages[0].record == "1845-b-girard-joseph-12345.png")
     }
 
     @Test("Sepulture filenames")
@@ -54,7 +54,7 @@ struct FilenameBuilderTests {
 
         let filenames = FilenameBuilder.filenames(for: tab, people: [person])
 
-        #expect(filenames.lafrance == "1800-(s)-vanasse-marie-anne-99999-lafrance.png")
+        #expect(filenames.lafrance == "1800-s-vanasse-marie-anne-99999-lafrance.png")
     }
 
     @Test("Names are lowercased and spaces become hyphens")
@@ -65,7 +65,7 @@ struct FilenameBuilderTests {
 
         let filenames = FilenameBuilder.filenames(for: tab, people: [person])
 
-        #expect(filenames.lafrance == "1900-(b)-tremblay-jean-baptiste-abc-lafrance.png")
+        #expect(filenames.lafrance == "1900-b-tremblay-jean-baptiste-abc-lafrance.png")
     }
 
     @Test("Single page with multiple closeups uses numbered suffixes")
@@ -77,8 +77,8 @@ struct FilenameBuilderTests {
         let filenames = FilenameBuilder.filenames(for: tab, people: [person], closeupCounts: [2])
 
         #expect(filenames.pages[0].closeups == [
-            "1845-(b)-girard-joseph-12345-closeup-1.png",
-            "1845-(b)-girard-joseph-12345-closeup-2.png",
+            "1845-b-girard-joseph-12345-closeup-1.png",
+            "1845-b-girard-joseph-12345-closeup-2.png",
         ])
     }
 }

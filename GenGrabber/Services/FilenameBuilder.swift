@@ -47,11 +47,11 @@ enum FilenameBuilder {
             let bride = people.first { $0.id == tab.personIDs[safe: 1] }
             let groomName = formatName(groom)
             let brideName = formatName(bride)
-            return "\(year)-(\(type))-\(groomName)-\(brideName)"
+            return "\(year)-\(type)-\(groomName)-\(brideName)"
         case .birth, .sepulture:
             let person = people.first { $0.id == tab.personIDs[safe: 0] }
             let name = formatName(person)
-            return "\(year)-(\(type))-\(name)"
+            return "\(year)-\(type)-\(name)"
         }
     }
 
