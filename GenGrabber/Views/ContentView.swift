@@ -27,6 +27,7 @@ struct ContentView: View {
                 if let selectedID = session.selectedTabID,
                    let tabIndex = session.tabs.firstIndex(where: { $0.id == selectedID }) {
                     RecordTabView(session: session, aiSettings: aiSettings, tabIndex: tabIndex)
+                        .id(selectedID)
                 } else {
                     NotesTabView(notes: $session.notes)
                 }
