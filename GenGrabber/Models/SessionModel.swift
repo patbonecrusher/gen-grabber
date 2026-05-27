@@ -53,6 +53,14 @@ final class SessionModel: @unchecked Sendable {
         }
     }
 
+    func loadFromResult(_ result: FolderLoader.LoadResult) {
+        clearAll()
+        people = result.people
+        tabs = result.tabs
+        notes = result.notes
+        selectedTabID = tabs.first?.id
+    }
+
     func clearAll() {
         people.removeAll()
         tabs.removeAll()

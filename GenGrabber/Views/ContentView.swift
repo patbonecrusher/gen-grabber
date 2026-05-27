@@ -4,6 +4,7 @@ struct ContentView: View {
     @State private var session = SessionModel()
     @State private var aiSettings = AISettings()
     @State private var showClearConfirmation = false
+    @State private var showOpenConfirmation = false
     @State private var saveResult: FileSaver.SaveResult?
     @State private var showSaveConfirmation = false
     @State private var showSettings = false
@@ -49,6 +50,11 @@ struct ContentView: View {
                 }
                 .controlSize(.small)
 
+                Button("Open Folder...") {
+                    openFolder()
+                }
+                .controlSize(.small)
+
                 Button("Clear All") {
                     showClearConfirmation = true
                 }
@@ -77,6 +83,16 @@ struct ContentView: View {
         } message: {
             Text("This will remove all people, records, and images. This cannot be undone.")
         }
+        .alert("Open Folder?", isPresented: $showOpenConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Open", role: .destructive) {
+                if let result = FolderLoader.pickAndLoad() {
+                    session.loadFromResult(result)
+                }
+            }
+        } message: {
+            Text("This will clear the current session and load from the selected folder.")
+        }
         .sheet(isPresented: $showSettings) {
             SettingsView(settings: aiSettings)
         }
@@ -86,6 +102,16 @@ struct ContentView: View {
             if let result = saveResult {
                 Text("Saved \(result.fileCount) files to \(result.folder.lastPathComponent)/")
             }
+        }
+    }
+
+    private func openFolder() {
+        if session.tabs.isEmpty && session.people.isEmpty {
+            if let result = FolderLoader.pickAndLoad() {
+                session.loadFromResult(result)
+            }
+        } else {
+            showOpenConfirmation = true
         }
     }
 }
