@@ -13,4 +13,10 @@ where s is sepulture
 
 Can you give me a native app where I can enter the info, and paste each image in each bucket.
 
-
+curl http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer 9a0a376b23ee375fb0211347" \
+  -d '{
+    "model": "Qwen3.6-27B-OptiQ-4bit",
+    "messages": [{"role": "user", "content": "Say this is a test"}]
+  }'

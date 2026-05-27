@@ -2,9 +2,11 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var session = SessionModel()
+    @State private var aiSettings = AISettings()
     @State private var showClearConfirmation = false
     @State private var saveResult: FileSaver.SaveResult?
     @State private var showSaveConfirmation = false
+    @State private var showSettings = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,7 +25,7 @@ struct ContentView: View {
             Group {
                 if let selectedID = session.selectedTabID,
                    let tabIndex = session.tabs.firstIndex(where: { $0.id == selectedID }) {
-                    RecordTabView(session: session, tabIndex: tabIndex)
+                    RecordTabView(session: session, aiSettings: aiSettings, tabIndex: tabIndex)
                 } else {
                     NotesTabView(notes: $session.notes)
                 }
@@ -39,6 +41,13 @@ struct ContentView: View {
                     .foregroundStyle(.secondary)
 
                 Spacer()
+
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gear")
+                }
+                .controlSize(.small)
 
                 Button("Clear All") {
                     showClearConfirmation = true
@@ -67,6 +76,9 @@ struct ContentView: View {
             }
         } message: {
             Text("This will remove all people, records, and images. This cannot be undone.")
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView(settings: aiSettings)
         }
         .alert("Saved", isPresented: $showSaveConfirmation) {
             Button("OK") {}
