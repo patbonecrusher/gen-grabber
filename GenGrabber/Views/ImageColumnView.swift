@@ -7,9 +7,12 @@ struct ImageColumnView: View {
 
     @State private var isParsing = false
     @State private var parseResult: ParsedRecord?
+    @State private var parseTabID: UUID?
     @State private var showParseConfirmation = false
     @State private var parseError: String?
     @State private var showParseError = false
+
+    private var tabID: UUID { session.tabs[tabIndex].id }
 
     var body: some View {
         ScrollView {
@@ -24,7 +27,7 @@ struct ImageColumnView: View {
                         Spacer()
                         if session.tabs[tabIndex].lafranceImage != nil {
                             Button {
-                                parseLatFrance()
+                                parseLaFrance()
                             } label: {
                                 if isParsing {
                                     ProgressView()
@@ -63,12 +66,7 @@ struct ImageColumnView: View {
         .alert("Parsed Record", isPresented: $showParseConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Apply") {
-                if let result = parseResult {
-                    session.tabs[tabIndex].year = result.year
-                    if session.tabs[tabIndex].pages.indices.contains(0) {
-                        session.tabs[tabIndex].pages[0].recordID = result.recordID
-                    }
-                }
+                applyParseResult()
             }
         } message: {
             if let result = parseResult {
@@ -82,16 +80,24 @@ struct ImageColumnView: View {
         }
     }
 
-    private func parseLatFrance() {
+    private func parseLaFrance() {
+        // Capture the tab ID and image snapshot NOW, before the async call
+        let currentTabID = tabID
         guard let image = session.tabs[tabIndex].lafranceImage else { return }
+        let baseURL = aiSettings.baseURL
+        let token = aiSettings.token
+        let model = aiSettings.model
+
         isParsing = true
+        parseTabID = currentTabID
+
         Task {
             do {
                 let result = try await AIParserService.parse(
                     image: image,
-                    baseURL: aiSettings.baseURL,
-                    token: aiSettings.token,
-                    model: aiSettings.model
+                    baseURL: baseURL,
+                    token: token,
+                    model: model
                 )
                 parseResult = result
                 showParseConfirmation = true
@@ -100,6 +106,16 @@ struct ImageColumnView: View {
                 showParseError = true
             }
             isParsing = false
+        }
+    }
+
+    private func applyParseResult() {
+        guard let result = parseResult, let savedTabID = parseTabID else { return }
+        // Apply to the tab that was parsed, not whatever tab is currently selected
+        guard let idx = session.tabs.firstIndex(where: { $0.id == savedTabID }) else { return }
+        session.tabs[idx].year = result.year
+        if session.tabs[idx].pages.indices.contains(0) {
+            session.tabs[idx].pages[0].recordID = result.recordID
         }
     }
 }
