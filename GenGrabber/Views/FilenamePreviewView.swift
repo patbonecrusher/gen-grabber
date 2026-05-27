@@ -5,7 +5,8 @@ struct FilenamePreviewView: View {
     let people: [Person]
 
     var body: some View {
-        let filenames = FilenameBuilder.filenames(for: tab, people: people)
+        let closeupCounts = tab.pages.map { $0.closeupImages.count }
+        let filenames = FilenameBuilder.filenames(for: tab, people: people, closeupCounts: closeupCounts)
 
         VStack(alignment: .leading, spacing: 2) {
             Text("FILENAMES")

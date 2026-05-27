@@ -5,12 +5,12 @@ struct PageGroup: Identifiable, Sendable {
     let id: UUID
     var recordID: String
     var recordImage: NSImage?
-    var closeupImage: NSImage?
+    var closeupImages: [NSImage?]
 
-    init(id: UUID = UUID(), recordID: String = "", recordImage: NSImage? = nil, closeupImage: NSImage? = nil) {
+    init(id: UUID = UUID(), recordID: String = "", recordImage: NSImage? = nil) {
         self.id = id
         self.recordID = recordID
         self.recordImage = recordImage
-        self.closeupImage = closeupImage
+        self.closeupImages = [nil] // Start with one empty closeup slot
     }
 }

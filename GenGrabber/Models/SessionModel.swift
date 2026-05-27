@@ -65,7 +65,7 @@ final class SessionModel: @unchecked Sendable {
             var n = tab.lafranceImage != nil ? 1 : 0
             for page in tab.pages {
                 if page.recordImage != nil { n += 1 }
-                if page.closeupImage != nil { n += 1 }
+                n += page.closeupImages.compactMap({ $0 }).count
             }
             return count + n
         }

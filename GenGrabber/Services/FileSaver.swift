@@ -16,7 +16,7 @@ enum FileSaver {
         for tabIndex in session.tabs.indices {
             let tab = session.tabs[tabIndex]
             let people = session.people
-            let closeupCounts = tab.pages.map { _ in 1 }
+            let closeupCounts = tab.pages.map { $0.closeupImages.count }
             let filenames = FilenameBuilder.filenames(for: tab, people: people, closeupCounts: closeupCounts)
 
             // Save LaFrance
@@ -37,10 +37,11 @@ enum FileSaver {
                     }
                 }
 
-                if let image = page.closeupImage {
-                    let closeupName = pageFilenames.closeups.first ?? ""
-                    if saveImage(image, named: closeupName, to: folderURL) {
-                        fileCount += 1
+                for (closeupIndex, closeupImage) in page.closeupImages.enumerated() {
+                    if let image = closeupImage, closeupIndex < pageFilenames.closeups.count {
+                        if saveImage(image, named: pageFilenames.closeups[closeupIndex], to: folderURL) {
+                            fileCount += 1
+                        }
                     }
                 }
             }

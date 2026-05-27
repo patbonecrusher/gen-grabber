@@ -32,10 +32,37 @@ struct PageGroupView: View {
                 }
             }
 
-            HStack(spacing: 8) {
-                ImageSlotView(label: "Record", image: $page.recordImage)
-                ImageSlotView(label: "Closeup", image: $page.closeupImage)
+            // Record slot
+            ImageSlotView(label: "Record", image: $page.recordImage)
+
+            // Closeup slots
+            ForEach(Array(page.closeupImages.indices), id: \.self) { index in
+                HStack(spacing: 4) {
+                    ImageSlotView(
+                        label: page.closeupImages.count > 1 ? "Closeup \(index + 1)" : "Closeup",
+                        image: $page.closeupImages[index]
+                    )
+                    if page.closeupImages.count > 1 {
+                        Button {
+                            page.closeupImages.remove(at: index)
+                        } label: {
+                            Image(systemName: "minus.circle")
+                                .font(.caption)
+                                .foregroundStyle(.red.opacity(0.7))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
+
+            Button {
+                page.closeupImages.append(nil)
+            } label: {
+                Label("Add Closeup", systemImage: "plus")
+                    .font(.caption2)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.accentColor)
         }
         .padding(8)
         .background(Color(.windowBackgroundColor).opacity(0.5))
