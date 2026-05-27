@@ -8,43 +8,52 @@ When researching genealogy records on LaFrance/GenealogyQuebec, the workflow of 
 
 ## Architecture
 
-**Platform:** Native macOS app using SwiftUI, targeting macOS 14+ (Sonnet).
+**Platform:** Native macOS app using SwiftUI, targeting macOS 14+ (Sonoma).
 
 **Single-window app** with:
-1. A session-level header for the couple's names
-2. A tab bar for individual records
+1. A session-level people list
+2. A tab bar with record-type creation buttons
 3. A two-column layout per tab (form left, images right)
 4. A bottom bar with Save All
 
 No persistence/database needed — this is a session-based tool. Data lives in memory until saved to disk.
 
-## Session-Level Header
+## People List (Session Header)
 
-At the top of the window, two rows for the couple's names:
+A list of people at the top of the window. Each person has:
 
 | Field | Description |
 |-------|-------------|
-| Male Last Name | e.g. "Girard" |
-| Male First Name | e.g. "Joseph" |
-| Female Last Name | e.g. "Vanasse" |
-| Female First Name | e.g. "Marie Anne" |
+| Gender | M or F (shown as a colored badge) |
+| Last Name | e.g. "Girard" |
+| First Name | e.g. "Joseph" |
 
-These names are shared across all tabs and used to construct filenames.
+The user can:
+- Add people via "+ Add Person" (new row with gender toggle, last name, first name fields)
+- Remove people via an "x" button on each row
+- Add as many people as needed (handles remarriages, multiple family members)
+
+These names are referenced by tabs to construct filenames. A person cannot be removed if they are referenced by an existing tab.
+
+**Example session with a remarriage:**
+- M: Girard, Joseph
+- F: Vanasse, Marie Anne
+- F: Tremblay, Catherine
 
 ## Record Types
 
-Three types, selected via a segmented control (B / W / S):
+Three types, chosen when creating a new tab:
 
 ### Birth (b)
-- Uses one person's name (male or female — user picks via toggle)
+- References one person from the people list
 - Filename pattern: `YEAR-(b)-lastname-firstname-RECORDID{suffix}.png`
 
 ### Wedding (w)
-- Uses both names (male first, then female)
-- Filename pattern: `YEAR-(w)-male-lastname-male-firstname-female-lastname-female-firstname-RECORDID{suffix}.png`
+- References two people from the people list (groom + bride)
+- Filename pattern: `YEAR-(w)-groom-lastname-groom-firstname-bride-lastname-bride-firstname-RECORDID{suffix}.png`
 
 ### Sepulture (s)
-- Uses one person's name (male or female — user picks via toggle)
+- References one person from the people list
 - Filename pattern: `YEAR-(s)-lastname-firstname-RECORDID{suffix}.png`
 
 All names in filenames are lowercased. Spaces in first names become hyphens (e.g. "Marie Anne" -> "marie-anne").
@@ -52,16 +61,27 @@ All names in filenames are lowercased. Spaces in first names become hyphens (e.g
 ## Tab Structure
 
 ### Tab Bar
-- Each record is a tab, labeled automatically (e.g. "Wedding", "Birth - Joseph", "Sep. - Marie Anne")
-- A special "Notes" tab for free-form text
-- A "+" button to add new record tabs
+
+- Each record is a tab, labeled automatically:
+  - Wedding: "W: Joseph + Marie Anne"
+  - Birth: "B: Joseph"
+  - Sepulture: "S: Marie Anne"
+- A special "Notes" tab (always present, cannot be closed)
+- Three creation buttons on the right side of the tab bar: **+ Birth**, **+ Wedding**, **+ Sepulture**
 - Tabs can be closed (with confirmation if they have pasted images)
+
+### Creating a New Tab
+
+**+ Wedding:** Opens a popover showing the people list. User picks the groom, then the bride. Tab is created.
+
+**+ Birth / + Sepulture:** Opens a popover showing the people list. User picks one person. Tab is created.
+
+The tab is locked to its type and selected people after creation.
 
 ### Per-Tab Layout (Two-Column)
 
 **Left Column — Metadata:**
-- Segmented control: B / W / S
-- For Birth and Sepulture: toggle for Male / Female (which person this record is for)
+- Selected people (read-only, showing who the tab references)
 - Year text field
 - Page groups (see below)
 - Live filename preview at the bottom
@@ -102,7 +122,7 @@ All filenames are constructed from the metadata fields. Format:
 
 Where `{base}` depends on the record type:
 - Birth: `YEAR-(b)-lastname-firstname`
-- Wedding: `YEAR-(w)-male-lastname-male-firstname-female-lastname-female-firstname`
+- Wedding: `YEAR-(w)-groom-lastname-groom-firstname-bride-lastname-bride-firstname`
 - Sepulture: `YEAR-(s)-lastname-firstname`
 
 And `{suffix}` depends on the image type:
@@ -165,12 +185,12 @@ When a record has multiple pages with different record IDs, each page's images u
 
 - A "Clear All" button in the bottom bar
 - Clears all tabs, images, and form fields
-- Resets to a fresh session (empty couple names, one empty tab)
+- Resets to a fresh session (empty people list, no record tabs, empty notes)
 - Requires confirmation dialog
 
 ## Live Filename Preview
 
-At the bottom of each tab's left column, a preview area shows the filenames that will be generated for that tab. Updates live as the user types in the year, record ID, or changes the type/person toggle. Record IDs that haven't been entered yet show as `{recordid}`.
+At the bottom of each tab's left column, a preview area shows the filenames that will be generated for that tab. Updates live as the user types in the year or record ID. Record IDs that haven't been entered yet show as `{recordid}`.
 
 ## Image Format
 
