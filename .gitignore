@@ -1,0 +1,6 @@
+.build/
+.swiftpm/
+GenGrabber.xcodeproj/
+DerivedData/
+.superpowers/
+.agent/
