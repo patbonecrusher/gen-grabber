@@ -108,7 +108,8 @@ struct ImageColumnView: View {
                     image: image,
                     baseURL: baseURL,
                     token: token,
-                    model: model
+                    model: model,
+                    timeout: aiSettings.requestTimeout
                 )
                 parseResult = result
                 showParseConfirmation = true

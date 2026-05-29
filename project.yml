@@ -15,13 +15,15 @@ targets:
       - path: GenGrabber
         excludes:
           - Tests
+    info:
+      path: GenGrabber/Info.plist
+      properties:
+        CFBundleIconFile: AppIcon
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gengrabber.GenGrabber
-        INFOPLIST_GENERATION_MODE: GeneratedByXcode
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
-        GENERATE_INFOPLIST_FILE: true
   GenGrabberTests:
     type: bundle.unit-test
     platform: macOS

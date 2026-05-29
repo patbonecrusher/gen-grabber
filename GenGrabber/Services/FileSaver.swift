@@ -54,6 +54,18 @@ enum FileSaver {
             fileCount += 1
         }
 
+        // Save summary JSON
+        if !session.summary.records.isEmpty {
+            let folderName = folderURL.lastPathComponent
+            let jsonURL = folderURL.appendingPathComponent("\(folderName).json")
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            if let jsonData = try? encoder.encode(session.summary) {
+                try? jsonData.write(to: jsonURL)
+                fileCount += 1
+            }
+        }
+
         return SaveResult(fileCount: fileCount, folder: folderURL)
     }
 

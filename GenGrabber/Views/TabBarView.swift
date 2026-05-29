@@ -14,18 +14,27 @@ struct TabBarView: View {
             ForEach(session.tabs) { tab in
                 TabButton(
                     label: session.tabLabel(for: tab),
-                    isSelected: session.selectedTabID == tab.id,
-                    onSelect: { session.selectedTabID = tab.id },
+                    isSelected: session.selection == .record(tab.id),
+                    onSelect: { session.selection = .record(tab.id) },
                     onClose: { session.removeTab(tab.id) }
                 )
             }
 
-            // Notes tab (selectedTabID == nil means notes is selected)
+            // Notes tab
             TabButton(
                 label: "Notes",
-                isSelected: session.selectedTabID == nil,
+                isSelected: session.selection == .notes,
                 isCloseable: false,
-                onSelect: { session.selectedTabID = nil },
+                onSelect: { session.selection = .notes },
+                onClose: {}
+            )
+
+            // Summary tab
+            TabButton(
+                label: "Summary",
+                isSelected: session.selection == .summary,
+                isCloseable: false,
+                onSelect: { session.selection = .summary },
                 onClose: {}
             )
 

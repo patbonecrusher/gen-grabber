@@ -6,6 +6,7 @@ enum FolderLoader {
         var people: [Person]
         var tabs: [RecordTab]
         var notes: String
+        var summary: SessionSummary
     }
 
     @MainActor
@@ -29,6 +30,14 @@ enum FolderLoader {
         // Load notes.txt if present
         let notesURL = folderURL.appendingPathComponent("notes.txt")
         let notes = (try? String(contentsOf: notesURL, encoding: .utf8)) ?? ""
+
+        // Load summary JSON if present
+        let folderName = folderURL.lastPathComponent
+        let jsonURL = folderURL.appendingPathComponent("\(folderName).json")
+        var summary = SessionSummary()
+        if let jsonData = try? Data(contentsOf: jsonURL) {
+            summary = (try? JSONDecoder().decode(SessionSummary.self, from: jsonData)) ?? SessionSummary()
+        }
 
         // Group image files by record base (year-type-names)
         let imageFiles = files.filter { isImageFile($0) }
@@ -120,7 +129,7 @@ enum FolderLoader {
         }
 
         let people = Array(peopleByName.values)
-        return LoadResult(people: people, tabs: tabs, notes: notes)
+        return LoadResult(people: people, tabs: tabs, notes: notes, summary: summary)
     }
 
     // MARK: - Filename Parsing

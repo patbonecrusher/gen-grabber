@@ -11,6 +11,9 @@ final class AISettings {
     var model: String {
         didSet { UserDefaults.standard.set(model, forKey: "ai_model") }
     }
+    var requestTimeout: Double {
+        didSet { UserDefaults.standard.set(requestTimeout, forKey: "ai_requestTimeout") }
+    }
 
     var isConfigured: Bool {
         !baseURL.trimmingCharacters(in: .whitespaces).isEmpty &&
@@ -21,5 +24,7 @@ final class AISettings {
         self.baseURL = UserDefaults.standard.string(forKey: "ai_baseURL") ?? ""
         self.token = UserDefaults.standard.string(forKey: "ai_token") ?? ""
         self.model = UserDefaults.standard.string(forKey: "ai_model") ?? ""
+        let saved = UserDefaults.standard.double(forKey: "ai_requestTimeout")
+        self.requestTimeout = saved > 0 ? saved : 180
     }
 }

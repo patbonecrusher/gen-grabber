@@ -1,11 +1,18 @@
 import SwiftUI
 
+enum TabSelection: Equatable {
+    case record(UUID)
+    case notes
+    case summary
+}
+
 @Observable
 final class SessionModel: @unchecked Sendable {
     var people: [Person] = []
     var tabs: [RecordTab] = []
     var notes: String = ""
-    var selectedTabID: UUID?
+    var selection: TabSelection = .notes
+    var summary: SessionSummary = SessionSummary()
 
     func addPerson() {
         people.append(Person())
@@ -23,13 +30,13 @@ final class SessionModel: @unchecked Sendable {
     func addTab(type: RecordType, personIDs: [UUID]) {
         let tab = RecordTab(recordType: type, personIDs: personIDs)
         tabs.append(tab)
-        selectedTabID = tab.id
+        selection = .record(tab.id)
     }
 
     func removeTab(_ id: UUID) {
         tabs.removeAll { $0.id == id }
-        if selectedTabID == id {
-            selectedTabID = tabs.first?.id
+        if selection == .record(id) {
+            selection = tabs.first.map { .record($0.id) } ?? .notes
         }
     }
 
@@ -58,14 +65,16 @@ final class SessionModel: @unchecked Sendable {
         people = result.people
         tabs = result.tabs
         notes = result.notes
-        selectedTabID = tabs.first?.id
+        summary = result.summary
+        selection = tabs.first.map { .record($0.id) } ?? .notes
     }
 
     func clearAll() {
         people.removeAll()
         tabs.removeAll()
         notes = ""
-        selectedTabID = nil
+        summary = SessionSummary()
+        selection = .notes
     }
 
     var totalImageCount: Int {

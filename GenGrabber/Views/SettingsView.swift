@@ -33,6 +33,14 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
             }
 
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Request Timeout (seconds)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("180", value: $settings.requestTimeout, format: .number)
+                    .textFieldStyle(.roundedBorder)
+            }
+
             HStack {
                 Spacer()
                 Button("Done") { dismiss() }

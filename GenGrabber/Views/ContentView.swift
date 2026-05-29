@@ -24,12 +24,16 @@ struct ContentView: View {
 
             // Tab content
             Group {
-                if let selectedID = session.selectedTabID,
-                   let tabIndex = session.tabs.firstIndex(where: { $0.id == selectedID }) {
-                    RecordTabView(session: session, aiSettings: aiSettings, tabIndex: tabIndex)
-                        .id(selectedID)
-                } else {
+                switch session.selection {
+                case .record(let id):
+                    if let tabIndex = session.tabs.firstIndex(where: { $0.id == id }) {
+                        RecordTabView(session: session, aiSettings: aiSettings, tabIndex: tabIndex)
+                            .id(id)
+                    }
+                case .notes:
                     NotesTabView(notes: $session.notes)
+                case .summary:
+                    SummaryTabView(session: session, aiSettings: aiSettings)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
