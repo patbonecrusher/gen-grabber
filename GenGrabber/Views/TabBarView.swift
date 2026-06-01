@@ -114,20 +114,3 @@ private struct TabButton: View {
         .onTapGesture { onSelect() }
     }
 }
-
-private struct AddTabButton: View {
-    let label: String
-    let color: Color
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(label)
-                .font(.caption2)
-                .fontWeight(.medium)
-        }
-        .buttonStyle(.bordered)
-        .tint(color)
-        .controlSize(.small)
-    }
-}

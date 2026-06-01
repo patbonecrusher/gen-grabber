@@ -5,7 +5,6 @@ struct ImageSlotView: View {
     @Binding var image: NSImage?
     var onPreview: (() -> Void)?
     @FocusState private var isFocused: Bool
-    @State private var showPreview = false
 
     var body: some View {
         VStack(spacing: 4) {
@@ -23,13 +22,7 @@ struct ImageSlotView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(maxHeight: 120)
-                        .onTapGesture {
-                            if let onPreview {
-                                onPreview()
-                            } else {
-                                showPreview = true
-                            }
-                        }
+                        .onTapGesture { onPreview?() }
                         .overlay(alignment: .topTrailing) {
                             Button {
                                 self.image = nil
@@ -68,22 +61,6 @@ struct ImageSlotView: View {
                 guard keyPress.modifiers.contains(.command) else { return .ignored }
                 pasteFromClipboard()
                 return .handled
-            }
-        }
-        .sheet(isPresented: $showPreview) {
-            if let image {
-                VStack {
-                    HStack {
-                        Spacer()
-                        Button("Close") { showPreview = false }
-                            .padding()
-                    }
-                    Image(nsImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .padding()
-                }
-                .frame(minWidth: 600, minHeight: 400)
             }
         }
     }

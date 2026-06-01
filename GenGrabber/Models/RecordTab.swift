@@ -7,7 +7,6 @@ struct RecordTab: Identifiable, Sendable {
     /// For wedding: [groomID, brideID]. For birth/sepulture: [personID].
     let personIDs: [UUID]
     var year: String
-    var source: String = ""
     var lafranceImage: NSImage?
     var pages: [PageGroup]
 

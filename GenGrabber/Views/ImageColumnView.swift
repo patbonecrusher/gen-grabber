@@ -130,15 +130,6 @@ struct ImageColumnView: View {
         let token = aiSettings.token
         let model = aiSettings.model
 
-        // Debug: save the image being sent so we can verify
-        if let tiffData = image.tiffRepresentation,
-           let bitmap = NSBitmapImageRep(data: tiffData),
-           let pngData = bitmap.representation(using: .png, properties: [:]) {
-            let debugURL = URL(fileURLWithPath: "/tmp/gengrabber-parse-debug.png")
-            try? pngData.write(to: debugURL)
-            print("DEBUG: Saved parse image to /tmp/gengrabber-parse-debug.png (\(pngData.count) bytes)")
-        }
-
         isParsing = true
         parseTabID = currentTabID
         parseTabLabel = session.tabLabel(for: session.tabs[tabIndex])

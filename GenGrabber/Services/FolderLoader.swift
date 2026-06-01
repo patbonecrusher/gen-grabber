@@ -143,7 +143,7 @@ enum FolderLoader {
             let sortedRecordIDs = pagesByRecordID.keys.sorted()
             for recordID in sortedRecordIDs {
                 let pageFiles = (pagesByRecordID[recordID] ?? [])
-                    .sorted { $0.url.lastPathComponent < $1.url.lastPathComponent }
+                    .sorted { $0.url.lastPathComponent.localizedStandardCompare($1.url.lastPathComponent) == .orderedAscending }
 
                 var recordImage: NSImage?
                 var closeupImages: [NSImage?] = []
@@ -189,7 +189,6 @@ enum FolderLoader {
             }
 
             var tab = RecordTab(recordType: recordType, personIDs: personIDs, year: first.year)
-            tab.source = first.source
             tab.lafranceImage = lafranceImage
             tab.pages = pages
 
@@ -214,7 +213,6 @@ enum FolderLoader {
         let recordType: RecordType
         let names: [String] // [lastName, firstName] or [groomLast, groomFirst, brideLast, brideFirst]
         let recordID: String
-        let source: String
         let suffix: FileSuffix
         var recordKey: String { "\(year)-\(recordType.rawValue)-\(names.joined(separator: "-"))" }
     }
@@ -295,7 +293,6 @@ enum FolderLoader {
             recordType: recordType,
             names: names,
             recordID: recordID,
-            source: source,
             suffix: suffix
         )
     }
@@ -358,7 +355,6 @@ enum FolderLoader {
             recordType: recordType,
             names: names,
             recordID: recordID,
-            source: "",
             suffix: suffix
         )
     }
