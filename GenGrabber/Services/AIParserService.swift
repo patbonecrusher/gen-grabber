@@ -102,7 +102,7 @@ enum AIParserService {
             Look at this genealogy record screenshot carefully. Extract ALL visible information into structured JSON. \
             Return a JSON object with these fields: \
             "recordType" (one of "Marriage", "Baptism", "Burial"), \
-            "date" (the date of the event, e.g. "21-Jan-1808"), \
+            "date" (the date of the event, normalized to MM/DD/YYYY format, e.g. "01/21/1808"), \
             "parish" (the parish name), \
             "region" (the region/location), \
             "documentFilename" (the original document filename if visible, e.g. "d1p_1234567"), \
@@ -205,6 +205,81 @@ enum AIParserService {
         case let b as Bool: return String(b)
         default: return ""
         }
+    }
+
+    static func extractText(images: [NSImage], baseURL: String, token: String, model: String, timeout: Double = 180) async throws -> String {
+        guard !baseURL.trimmingCharacters(in: .whitespaces).isEmpty,
+              !model.trimmingCharacters(in: .whitespaces).isEmpty
+        else { throw AIParserError.notConfigured }
+
+        var imageContents: [[String: Any]] = []
+        for image in images {
+            guard let tiffData = image.tiffRepresentation,
+                  let bitmap = NSBitmapImageRep(data: tiffData),
+                  let pngData = bitmap.representation(using: .png, properties: [:])
+            else { continue }
+            let base64 = pngData.base64EncodedString()
+            imageContents.append(["type": "image_url", "image_url": ["url": "data:image/png;base64,\(base64)"]])
+        }
+
+        guard !imageContents.isEmpty else { throw AIParserError.imageConversionFailed }
+
+        let baseURL = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard let url = URL(string: "\(baseURL)/chat/completions") else {
+            throw AIParserError.invalidURL
+        }
+
+        let prompt = """
+            Look at this genealogy record image(s) carefully. \
+            Transcribe ALL the text you can see in the image(s) as faithfully as possible. \
+            Include names, dates, places, roles, and any other details. \
+            If the text is in French, keep it in French. \
+            Format the output as clean readable text, preserving the logical structure of the record. \
+            Do not add any commentary or interpretation — just the transcribed text.
+            """
+
+        var content: [[String: Any]] = [["type": "text", "text": prompt]]
+        content.append(contentsOf: imageContents)
+
+        let body: [String: Any] = [
+            "model": model,
+            "messages": [
+                [
+                    "role": "user",
+                    "content": content,
+                ] as [String: Any],
+            ],
+            "max_tokens": 4000,
+        ]
+
+        var request = URLRequest(url: url, timeoutInterval: timeout)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw AIParserError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+        }
+
+        return try parseTextResponse(data)
+    }
+
+    private static func parseTextResponse(_ data: Data) throws -> String {
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let firstChoice = choices.first,
+              let message = firstChoice["message"] as? [String: Any],
+              let content = message["content"] as? String
+        else {
+            throw AIParserError.parseFailed("Unexpected response format")
+        }
+        return content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func parseResponse(_ data: Data) throws -> ParsedRecord {

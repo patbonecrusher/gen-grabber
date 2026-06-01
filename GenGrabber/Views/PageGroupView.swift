@@ -5,6 +5,7 @@ struct PageGroupView: View {
     @Binding var page: PageGroup
     let canRemove: Bool
     let onRemove: () -> Void
+    var onImageTap: ((NSImage) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -33,14 +34,19 @@ struct PageGroupView: View {
             }
 
             // Record slot
-            ImageSlotView(label: "Record", image: $page.recordImage)
+            ImageSlotView(label: "Record", image: $page.recordImage, onPreview: {
+                if let img = page.recordImage { onImageTap?(img) }
+            })
 
             // Closeup slots
             ForEach(Array(page.closeupImages.indices), id: \.self) { index in
                 HStack(spacing: 4) {
                     ImageSlotView(
                         label: page.closeupImages.count > 1 ? "Closeup \(index + 1)" : "Closeup",
-                        image: $page.closeupImages[index]
+                        image: $page.closeupImages[index],
+                        onPreview: {
+                            if let img = page.closeupImages[index] { onImageTap?(img) }
+                        }
                     )
                     if page.closeupImages.count > 1 {
                         Button {

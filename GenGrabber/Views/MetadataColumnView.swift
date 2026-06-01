@@ -60,10 +60,10 @@ struct MetadataColumnView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("RECORD ID")
+                        Text("SOURCE / ID")
                             .font(.system(size: 9))
                             .foregroundStyle(.secondary)
-                        TextField("Record ID", text: $session.tabs[tabIndex].pages[pageIndex].recordID)
+                        TextField("e.g. d1p_12345 or newspaper name", text: $session.tabs[tabIndex].pages[pageIndex].recordID)
                             .textFieldStyle(.roundedBorder)
                             .font(.caption.monospaced())
                     }

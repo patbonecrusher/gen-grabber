@@ -12,42 +12,60 @@ struct ImageColumnView: View {
     @State private var showParseConfirmation = false
     @State private var parseError: String?
     @State private var showParseError = false
+    @State private var preview: ImagePreview?
 
     private var tabID: UUID { session.tabs[tabIndex].id }
+
+    private var showLaFranceSection: Bool {
+        let type = session.tabs[tabIndex].recordType
+        switch type {
+        case .birth, .wedding, .sepulture:
+            return true
+        case .obituary, .thanks:
+            return session.tabs[tabIndex].lafranceImage != nil
+        }
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                // LaFrance — always one
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("LAFRANCE")
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .foregroundStyle(.orange)
-                        Spacer()
-                        if session.tabs[tabIndex].lafranceImage != nil {
-                            Button {
-                                parseLaFrance()
-                            } label: {
-                                if isParsing {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                } else {
-                                    Label("Parse", systemImage: "wand.and.stars")
-                                        .font(.caption2)
+                // LaFrance — only for record types that use it, or when an image is already loaded
+                if showLaFranceSection {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("LAFRANCE")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.orange)
+                            Spacer()
+                            if session.tabs[tabIndex].lafranceImage != nil {
+                                Button {
+                                    parseLaFrance()
+                                } label: {
+                                    if isParsing {
+                                        ProgressView()
+                                            .controlSize(.small)
+                                    } else {
+                                        Label("Parse", systemImage: "wand.and.stars")
+                                            .font(.caption2)
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .disabled(isParsing || !aiSettings.isConfigured)
+                                .help(aiSettings.isConfigured ? "Extract year and record ID" : "Configure AI in Settings first")
+                            }
+                        }
+                        ImageSlotView(
+                            label: "",
+                            image: $session.tabs[tabIndex].lafranceImage,
+                            onPreview: {
+                                if let img = session.tabs[tabIndex].lafranceImage {
+                                    preview = ImagePreview(image: img, pageIndex: nil)
                                 }
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            .disabled(isParsing || !aiSettings.isConfigured)
-                            .help(aiSettings.isConfigured ? "Extract year and record ID" : "Configure AI in Settings first")
-                        }
+                        )
                     }
-                    ImageSlotView(
-                        label: "",
-                        image: $session.tabs[tabIndex].lafranceImage
-                    )
                 }
 
                 // Page groups
@@ -58,6 +76,9 @@ struct ImageColumnView: View {
                         canRemove: pageIndex > 0,
                         onRemove: {
                             session.tabs[tabIndex].pages.remove(at: pageIndex)
+                        },
+                        onImageTap: { image in
+                            preview = ImagePreview(image: image, pageIndex: pageIndex)
                         }
                     )
                 }
@@ -78,6 +99,26 @@ struct ImageColumnView: View {
             Button("OK") {}
         } message: {
             Text(parseError ?? "Unknown error")
+        }
+        .sheet(item: $preview) { item in
+            if let pageIdx = item.pageIndex,
+               session.tabs.indices.contains(tabIndex),
+               session.tabs[tabIndex].pages.indices.contains(pageIdx) {
+                ImageDetailView(
+                    image: item.image,
+                    parsedText: $session.tabs[tabIndex].pages[pageIdx].parsedText,
+                    aiSettings: aiSettings,
+                    onDismiss: { preview = nil }
+                )
+            } else {
+                // LaFrance or invalid index — preview only, no parsed text binding
+                ImageDetailView(
+                    image: item.image,
+                    parsedText: .constant(""),
+                    aiSettings: aiSettings,
+                    onDismiss: { preview = nil }
+                )
+            }
         }
     }
 

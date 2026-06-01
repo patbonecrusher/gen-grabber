@@ -6,6 +6,7 @@ struct PageGroup: Identifiable, Sendable {
     var recordID: String
     var recordImage: NSImage?
     var closeupImages: [NSImage?]
+    var parsedText: String = ""
 
     init(id: UUID = UUID(), recordID: String = "", recordImage: NSImage? = nil) {
         self.id = id

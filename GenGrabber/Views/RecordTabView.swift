@@ -6,10 +6,12 @@ struct RecordTabView: View {
     let tabIndex: Int
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            MetadataColumnView(session: session, tabIndex: tabIndex)
-            ImageColumnView(session: session, aiSettings: aiSettings, tabIndex: tabIndex)
+        if session.tabs.indices.contains(tabIndex) {
+            HStack(alignment: .top, spacing: 12) {
+                MetadataColumnView(session: session, tabIndex: tabIndex)
+                ImageColumnView(session: session, aiSettings: aiSettings, tabIndex: tabIndex)
+            }
+            .padding(12)
         }
-        .padding(12)
     }
 }

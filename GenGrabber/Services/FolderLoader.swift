@@ -5,8 +5,9 @@ enum FolderLoader {
     struct LoadResult {
         var people: [Person]
         var tabs: [RecordTab]
-        var notes: String
+        var notes: [Note]
         var summary: SessionSummary
+        var otherFiles: OtherFilesCollection
     }
 
     @MainActor
@@ -27,21 +28,64 @@ enum FolderLoader {
         let fm = FileManager.default
         let files = (try? fm.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)) ?? []
 
-        // Load notes.txt if present
-        let notesURL = folderURL.appendingPathComponent("notes.txt")
-        let notes = (try? String(contentsOf: notesURL, encoding: .utf8)) ?? ""
+        // Load note .txt files (excluding --parsed.txt and summary.json)
+        var loadedNotes: [Note] = []
+        for url in files where url.pathExtension.lowercased() == "txt" && !url.lastPathComponent.contains("--parsed") {
+            if let content = try? String(contentsOf: url, encoding: .utf8) {
+                let title = url.deletingPathExtension().lastPathComponent
+                loadedNotes.append(Note(title: title, content: content))
+            }
+        }
+        if loadedNotes.isEmpty {
+            loadedNotes = [Note(title: "notes")]
+        }
 
         // Load summary JSON if present
-        let folderName = folderURL.lastPathComponent
-        let jsonURL = folderURL.appendingPathComponent("\(folderName).json")
+        let jsonURL = folderURL.appendingPathComponent("summary.json")
         var summary = SessionSummary()
         if let jsonData = try? Data(contentsOf: jsonURL) {
             summary = (try? JSONDecoder().decode(SessionSummary.self, from: jsonData)) ?? SessionSummary()
         }
 
+        // Collect parsed text files (--parsed.txt) keyed by their record key + record ID
+        // e.g. "1845--b--girard-joseph--d13p_12345--parsed.txt" → key "d13p_12345"
+        // We parse them with the new format parser to extract type/names/recordID
+        var parsedTexts: [String: String] = [:]  // recordID → text
+        var parsedTextsByRecordKey: [String: String] = [:]  // recordKey → text (fallback)
+        for url in files where url.lastPathComponent.hasSuffix("--parsed.txt") {
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            // Strip "--parsed.txt" to get the base, then strip extension that was already removed
+            let filename = url.lastPathComponent
+            // Parse: split on -- to extract parts
+            let parts = filename.replacingOccurrences(of: "--parsed.txt", with: "")
+                .components(separatedBy: "--")
+            // Last non-"parsed" part is the recordID, earlier parts form the record key
+            if parts.count >= 4 {
+                // year--type--names--recordID
+                let recordID = parts.last!
+                let recordKey = parts.dropLast().joined(separator: "--")
+                parsedTexts[recordID] = text
+                parsedTextsByRecordKey[recordKey] = text
+            } else if parts.count == 3 {
+                // year--type--names (no recordID)
+                let recordKey = parts.joined(separator: "--")
+                parsedTextsByRecordKey[recordKey] = text
+            }
+        }
+
         // Group image files by record base (year-type-names)
         let imageFiles = files.filter { isImageFile($0) }
-        let parsed = imageFiles.compactMap { parseFilename($0) }
+
+        var parsed: [ParsedFile] = []
+        var otherFiles = OtherFilesCollection()
+        for url in imageFiles {
+            if let p = parseNewFormat(url) ?? parseLegacyFormat(url) {
+                parsed.append(p)
+            } else {
+                let image = NSImage(contentsOf: url)
+                otherFiles.files.append(OtherFile(url: url, filename: url.lastPathComponent, image: image))
+            }
+        }
 
         // Group by record key (year + type + names)
         var recordGroups: [String: [ParsedFile]] = [:]
@@ -65,16 +109,18 @@ enum FolderLoader {
                     lastName: first.names[safe: 0] ?? "",
                     firstName: first.names[safe: 1] ?? "",
                     gender: .male,
+                    knownGender: true,
                     registry: &peopleByName
                 )
                 let bride = getOrCreatePerson(
                     lastName: first.names[safe: 2] ?? "",
                     firstName: first.names[safe: 3] ?? "",
                     gender: .female,
+                    knownGender: true,
                     registry: &peopleByName
                 )
                 personIDs = [groom.id, bride.id]
-            case .birth, .sepulture:
+            case .birth, .sepulture, .obituary, .thanks:
                 let person = getOrCreatePerson(
                     lastName: first.names[safe: 0] ?? "",
                     firstName: first.names[safe: 1] ?? "",
@@ -96,7 +142,8 @@ enum FolderLoader {
 
             let sortedRecordIDs = pagesByRecordID.keys.sorted()
             for recordID in sortedRecordIDs {
-                let pageFiles = pagesByRecordID[recordID] ?? []
+                let pageFiles = (pagesByRecordID[recordID] ?? [])
+                    .sorted { $0.url.lastPathComponent < $1.url.lastPathComponent }
 
                 var recordImage: NSImage?
                 var closeupImages: [NSImage?] = []
@@ -119,17 +166,38 @@ enum FolderLoader {
 
                 var page = PageGroup(recordID: recordID, recordImage: recordImage)
                 page.closeupImages = closeupImages
+
+                // Look up parsed text for this page by recordID, then by record key
+                if let text = parsedTexts[recordID] {
+                    page.parsedText = text
+                } else {
+                    // Build the record key in the same format as filenames
+                    let names = first.names
+                    let namesPart: String
+                    if first.recordType == .wedding && names.count == 4 {
+                        namesPart = "\(names[0])-\(names[1])__\(names[2])-\(names[3])"
+                    } else {
+                        namesPart = names.joined(separator: "-")
+                    }
+                    let key = "\(first.year)--\(first.recordType.rawValue)--\(namesPart)"
+                    if let text = parsedTextsByRecordKey[key] {
+                        page.parsedText = text
+                    }
+                }
+
                 pages.append(page)
             }
 
             var tab = RecordTab(recordType: recordType, personIDs: personIDs, year: first.year)
+            tab.source = first.source
             tab.lafranceImage = lafranceImage
             tab.pages = pages
+
             tabs.append(tab)
         }
 
         let people = Array(peopleByName.values)
-        return LoadResult(people: people, tabs: tabs, notes: notes, summary: summary)
+        return LoadResult(people: people, tabs: tabs, notes: loadedNotes, summary: summary, otherFiles: otherFiles)
     }
 
     // MARK: - Filename Parsing
@@ -146,43 +214,80 @@ enum FolderLoader {
         let recordType: RecordType
         let names: [String] // [lastName, firstName] or [groomLast, groomFirst, brideLast, brideFirst]
         let recordID: String
+        let source: String
         let suffix: FileSuffix
         var recordKey: String { "\(year)-\(recordType.rawValue)-\(names.joined(separator: "-"))" }
     }
 
-    private static func parseFilename(_ url: URL) -> ParsedFile? {
+    // MARK: - New Format Parser (uses -- and __ separators)
+    // Format: year--type--names[--source[--suffix]].ext
+    // Wedding names use __ to separate people: groom-first__bride-first
+
+    private static func parseNewFormat(_ url: URL) -> ParsedFile? {
         let filename = url.deletingPathExtension().lastPathComponent
 
-        // Find record ID (starts with d1p_ or is a numeric string)
-        // Split on the record ID pattern
-        guard let recordIDRange = filename.range(of: #"d\dp_\d+"#, options: .regularExpression) else {
-            return nil
+        // New format requires at least two -- separators (year--type--names)
+        let sections = filename.components(separatedBy: "--")
+        guard sections.count >= 3 else { return nil }
+
+        let year = sections[0]
+        guard let recordType = RecordType(rawValue: sections[1]) else { return nil }
+        let namesPart = sections[2]
+
+        // Parse names: split on __ for wedding (person1__person2)
+        let names: [String]
+        if recordType == .wedding, namesPart.contains("__") {
+            let personParts = namesPart.components(separatedBy: "__")
+            guard personParts.count == 2 else { return nil }
+            let groomSegments = personParts[0].split(separator: "-", maxSplits: 1).map(String.init)
+            let brideSegments = personParts[1].split(separator: "-", maxSplits: 1).map(String.init)
+            names = [
+                groomSegments[safe: 0] ?? "", groomSegments[safe: 1] ?? "",
+                brideSegments[safe: 0] ?? "", brideSegments[safe: 1] ?? "",
+            ]
+        } else {
+            names = namesPart.split(separator: "-", maxSplits: 1).map(String.init)
         }
 
-        let recordID = String(filename[recordIDRange])
-        let beforeRecordID = String(filename[filename.startIndex..<recordIDRange.lowerBound])
-            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
-        let afterRecordID = String(filename[recordIDRange.upperBound...])
+        // Remaining sections are source/recordID and suffix
+        let remaining = Array(sections.dropFirst(3))
 
-        // Parse suffix
+        // Identify suffix (last section if it's a known keyword)
+        let knownSuffixes: Set<String> = ["lafrance", "closeup", "parsed"]
         let suffix: FileSuffix
-        if afterRecordID.contains("lafrance") {
-            suffix = .lafrance
-        } else if afterRecordID.contains("closeup") {
-            suffix = .closeup
+        var sourceSections = remaining
+
+        if let last = sourceSections.last {
+            if last.contains("lafrance") {
+                suffix = .lafrance
+                sourceSections.removeLast()
+            } else if last.hasPrefix("closeup") {
+                suffix = .closeup
+                sourceSections.removeLast()
+            } else if knownSuffixes.contains(last) {
+                // "parsed" — skip this file (it's a text file, not an image)
+                return nil
+            } else {
+                suffix = .record
+            }
         } else {
             suffix = .record
         }
 
-        // Parse year-type-names from beforeRecordID
-        let parts = beforeRecordID.split(separator: "-", maxSplits: 2).map(String.init)
-        guard parts.count >= 3 else { return nil }
-
-        let year = parts[0]
-        guard let recordType = RecordType(rawValue: parts[1]) else { return nil }
-
-        let namesPart = parts[2]
-        let names = parseNames(namesPart, recordType: recordType)
+        // What's left is the source/recordID
+        var recordID = ""
+        var source = ""
+        for section in sourceSections {
+            if section.hasPrefix("d") && section.contains("p_") {
+                recordID = section
+            } else {
+                source = section
+            }
+        }
+        // If no LaFrance-style recordID, use the source as the grouping key
+        if recordID.isEmpty && !source.isEmpty {
+            recordID = source
+        }
 
         return ParsedFile(
             url: url,
@@ -190,29 +295,79 @@ enum FolderLoader {
             recordType: recordType,
             names: names,
             recordID: recordID,
+            source: source,
             suffix: suffix
         )
     }
 
-    private static func parseNames(_ namesPart: String, recordType: RecordType) -> [String] {
-        // Names are hyphenated: "girard-joseph" or "girard-joseph-vanasse-marie-anne"
-        // For birth/sepulture: [lastName, firstName]
-        // For wedding: [groomLast, groomFirst, brideLast, brideFirst]
-        // Challenge: first names can be multi-part (marie-anne)
+    // MARK: - Legacy Format Parser (old LaFrance regex-based)
 
-        // Strategy: we know the structure. For birth/sepulture, the first segment is last name,
-        // the rest is first name. For wedding, we need to find where groom ends and bride begins.
-        // We use the fact that last names are single words (one segment) and first names may be
-        // multi-segment.
+    private static func parseLegacyFormat(_ url: URL) -> ParsedFile? {
+        let filename = url.deletingPathExtension().lastPathComponent
 
-        // Actually, looking at real data: last names are always single segment in the filename.
-        // "girard-joseph", "vanasse-marie-anne", "languirand-pierre"
-        // So: lastname is always the first segment, firstname is everything until the next lastname.
+        // Determine suffix by checking what's at the end
+        let suffix: FileSuffix
+        var working = filename
+        if let range = working.range(of: "-lafrance", options: .backwards) {
+            suffix = .lafrance
+            working = String(working[..<range.lowerBound])
+        } else if let range = working.range(of: #"-closeup(-\d+)?$"#, options: .regularExpression) {
+            suffix = .closeup
+            working = String(working[..<range.lowerBound])
+        } else {
+            suffix = .record
+        }
 
+        // Split: year-type-names-recordID
+        // year is first segment, type is second, then names, then the last segment is the recordID
+        // The recordID starts with "d" followed by digits then "p_"
+        let parts = working.split(separator: "-", maxSplits: 2).map(String.init)
+        guard parts.count >= 3 else { return nil }
+
+        let year = parts[0]
+        guard let recordType = RecordType(rawValue: parts[1]) else { return nil }
+
+        let remainder = parts[2] // "names-recordID"
+
+        // Find the recordID: look for last segment starting with "d" followed by digit then "p_"
+        // Split remainder into segments and find where recordID starts
+        let segments = remainder.split(separator: "-").map(String.init)
+        var recordIDStart: Int?
+        for i in segments.indices {
+            if segments[i].hasPrefix("d") && segments[i].contains("p_") {
+                recordIDStart = i
+                break
+            }
+        }
+
+        let namesPart: String
+        let recordID: String
+        if let start = recordIDStart, start > 0 {
+            namesPart = segments[0..<start].joined(separator: "-")
+            recordID = segments[start...].joined(separator: "-")
+        } else {
+            // No recordID found
+            return nil
+        }
+
+        let names = parseLegacyNames(namesPart, recordType: recordType)
+
+        return ParsedFile(
+            url: url,
+            year: year,
+            recordType: recordType,
+            names: names,
+            recordID: recordID,
+            source: "",
+            suffix: suffix
+        )
+    }
+
+    private static func parseLegacyNames(_ namesPart: String, recordType: RecordType) -> [String] {
         let segments = namesPart.split(separator: "-").map(String.init)
 
         switch recordType {
-        case .birth, .sepulture:
+        case .birth, .sepulture, .obituary, .thanks:
             guard segments.count >= 2 else { return segments }
             let lastName = segments[0]
             let firstName = segments[1...].joined(separator: "-")
@@ -274,6 +429,7 @@ enum FolderLoader {
         lastName: String,
         firstName: String,
         gender: Gender,
+        knownGender: Bool = false,
         registry: inout [String: Person]
     ) -> Person {
         // Capitalize names for display
@@ -281,7 +437,12 @@ enum FolderLoader {
         let displayFirst = capitalize(firstName)
         let key = "\(lastName)-\(firstName)".lowercased()
 
-        if let existing = registry[key] {
+        if var existing = registry[key] {
+            // Only update gender when we actually know it (from a wedding role)
+            if knownGender && existing.gender != gender {
+                existing.gender = gender
+                registry[key] = existing
+            }
             return existing
         }
 

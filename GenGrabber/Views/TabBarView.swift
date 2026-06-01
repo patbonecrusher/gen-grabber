@@ -38,20 +38,34 @@ struct TabBarView: View {
                 onClose: {}
             )
 
+            // Other tab (only when there are other files)
+            if !session.otherFiles.isEmpty {
+                TabButton(
+                    label: "Other (\(session.otherFiles.files.count))",
+                    isSelected: session.selection == .other,
+                    isCloseable: false,
+                    onSelect: { session.selection = .other },
+                    onClose: {}
+                )
+            }
+
             Spacer()
 
-            // Creation buttons
-            HStack(spacing: 4) {
-                AddTabButton(label: "+ Birth", color: .green) {
-                    showPickerFor = .birth
-                }
-                AddTabButton(label: "+ Wedding", color: .blue) {
-                    showPickerFor = .wedding
-                }
-                AddTabButton(label: "+ Sepulture", color: .red) {
-                    showPickerFor = .sepulture
-                }
+            // Creation menu
+            Menu {
+                Button("Birth") { showPickerFor = .birth }
+                Button("Wedding") { showPickerFor = .wedding }
+                Button("Sepulture") { showPickerFor = .sepulture }
+                Divider()
+                Button("Obituary") { showPickerFor = .obituary }
+                Button("Thanks") { showPickerFor = .thanks }
+            } label: {
+                Label("Add Record", systemImage: "plus")
+                    .font(.caption2)
+                    .fontWeight(.medium)
             }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
             .popover(item: $showPickerFor) { type in
                 PersonPickerPopover(
                     recordType: type,

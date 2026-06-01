@@ -31,9 +31,11 @@ struct ContentView: View {
                             .id(id)
                     }
                 case .notes:
-                    NotesTabView(notes: $session.notes)
+                    NotesTabView(session: session)
                 case .summary:
                     SummaryTabView(session: session, aiSettings: aiSettings)
+                case .other:
+                    OtherFilesTabView(session: session)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

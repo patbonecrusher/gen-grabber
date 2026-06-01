@@ -1,25 +1,89 @@
 import SwiftUI
 
 struct NotesTabView: View {
-    @Binding var notes: String
+    @Bindable var session: SessionModel
+    @State private var selectedNoteID: UUID?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Session Notes")
-                .font(.headline)
-                .foregroundStyle(.secondary)
+        HSplitView {
+            // Left pane — note list
+            VStack(spacing: 0) {
+                List(selection: $selectedNoteID) {
+                    ForEach(session.notes) { note in
+                        HStack(spacing: 6) {
+                            Image(systemName: "doc.text")
+                                .foregroundStyle(.orange)
+                                .font(.caption)
+                            Text(note.title.isEmpty ? "Untitled" : note.title)
+                                .font(.caption)
+                                .lineLimit(1)
+                        }
+                        .tag(note.id)
+                        .contextMenu {
+                            if session.notes.count > 1 {
+                                Button("Delete", role: .destructive) {
+                                    if selectedNoteID == note.id {
+                                        selectedNoteID = session.notes.first(where: { $0.id != note.id })?.id
+                                    }
+                                    session.removeNote(note.id)
+                                }
+                            }
+                        }
+                    }
+                }
+                .listStyle(.sidebar)
 
-            TextEditor(text: $notes)
-                .font(.body)
-                .scrollContentBackground(.hidden)
+                Divider()
+
+                Button {
+                    session.addNote()
+                    selectedNoteID = session.notes.last?.id
+                } label: {
+                    Label("Add Note", systemImage: "plus")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
                 .padding(8)
-                .background(Color(.windowBackgroundColor).opacity(0.5))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .frame(minWidth: 150, maxWidth: 200)
 
-            Text("Saved as notes.txt — leave empty to skip")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            // Right pane — note editor
+            if let noteIndex = session.notes.firstIndex(where: { $0.id == selectedNoteID }) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Title:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("Note title (used as filename)", text: $session.notes[noteIndex].title)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 300)
+                    }
+
+                    TextEditor(text: $session.notes[noteIndex].content)
+                        .font(.body)
+                        .scrollContentBackground(.hidden)
+                        .padding(8)
+                        .background(Color(.windowBackgroundColor).opacity(0.5))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                    Text("Saved as \(session.notes[noteIndex].filename)")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(12)
+            } else {
+                ContentUnavailableView {
+                    Label("Select a Note", systemImage: "doc.text")
+                } description: {
+                    Text("Choose a note from the list or add a new one")
+                }
+            }
         }
-        .padding(12)
+        .onAppear {
+            if selectedNoteID == nil {
+                selectedNoteID = session.notes.first?.id
+            }
+        }
     }
 }

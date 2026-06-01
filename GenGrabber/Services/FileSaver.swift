@@ -20,13 +20,13 @@ enum FileSaver {
             let filenames = FilenameBuilder.filenames(for: tab, people: people, closeupCounts: closeupCounts)
 
             // Save LaFrance
-            if let image = tab.lafranceImage {
-                if saveImage(image, named: filenames.lafrance, to: folderURL) {
+            if let lafranceFilename = filenames.lafrance, let image = tab.lafranceImage {
+                if saveImage(image, named: lafranceFilename, to: folderURL) {
                     fileCount += 1
                 }
             }
 
-            // Save page images
+            // Save page images and parsed text
             for (pageIndex, page) in tab.pages.enumerated() {
                 guard pageIndex < filenames.pages.count else { continue }
                 let pageFilenames = filenames.pages[pageIndex]
@@ -35,6 +35,12 @@ enum FileSaver {
                     if saveImage(image, named: pageFilenames.record, to: folderURL) {
                         fileCount += 1
                     }
+                }
+
+                if !page.parsedText.isEmpty {
+                    let parsedURL = folderURL.appendingPathComponent(pageFilenames.parsed)
+                    try? page.parsedText.write(to: parsedURL, atomically: true, encoding: .utf8)
+                    fileCount += 1
                 }
 
                 for (closeupIndex, closeupImage) in page.closeupImages.enumerated() {
@@ -47,17 +53,27 @@ enum FileSaver {
             }
         }
 
+        // Save other files (copy with original filenames)
+        for otherFile in session.otherFiles.files {
+            if let image = otherFile.image {
+                if saveImage(image, named: otherFile.filename, to: folderURL) {
+                    fileCount += 1
+                }
+            }
+        }
+
         // Save notes
-        if !session.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let notesURL = folderURL.appendingPathComponent("notes.txt")
-            try? session.notes.write(to: notesURL, atomically: true, encoding: .utf8)
+        for note in session.notes {
+            let content = note.content.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !content.isEmpty else { continue }
+            let noteURL = folderURL.appendingPathComponent(note.filename)
+            try? note.content.write(to: noteURL, atomically: true, encoding: .utf8)
             fileCount += 1
         }
 
         // Save summary JSON
         if !session.summary.records.isEmpty {
-            let folderName = folderURL.lastPathComponent
-            let jsonURL = folderURL.appendingPathComponent("\(folderName).json")
+            let jsonURL = folderURL.appendingPathComponent("summary.json")
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             if let jsonData = try? encoder.encode(session.summary) {

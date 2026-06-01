@@ -15,10 +15,16 @@ struct FilenamePreviewView: View {
                 .textCase(.uppercase)
 
             VStack(alignment: .leading, spacing: 1) {
-                filenameRow(filenames.lafrance)
-                ForEach(Array(filenames.pages.enumerated()), id: \.offset) { _, page in
-                    filenameRow(page.record)
-                    ForEach(page.closeups, id: \.self) { closeup in
+                if let lafrance = filenames.lafrance {
+                    filenameRow(lafrance)
+                }
+                ForEach(Array(zip(tab.pages, filenames.pages).enumerated()), id: \.offset) { _, pair in
+                    let (tabPage, pageFilenames) = pair
+                    filenameRow(pageFilenames.record)
+                    if !tabPage.parsedText.isEmpty {
+                        filenameRow(pageFilenames.parsed)
+                    }
+                    ForEach(pageFilenames.closeups, id: \.self) { closeup in
                         filenameRow(closeup)
                     }
                 }

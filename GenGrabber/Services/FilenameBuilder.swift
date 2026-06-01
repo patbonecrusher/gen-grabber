@@ -3,10 +3,11 @@ import Foundation
 struct PageFilenames: Sendable {
     let record: String
     let closeups: [String]
+    let parsed: String
 }
 
 struct RecordFilenames: Sendable {
-    let lafrance: String
+    let lafrance: String?
     let pages: [PageFilenames]
 }
 
@@ -18,20 +19,26 @@ enum FilenameBuilder {
     ) -> RecordFilenames {
         let base = buildBase(for: tab, people: people)
         let firstRecordID = tab.pages.first?.recordID ?? ""
-        let lafrance = "\(base)-\(firstRecordID)-lafrance.png"
+        let hasLafranceID = firstRecordID.hasPrefix("d") && firstRecordID.contains("p_")
+
+        let lafrance: String? = hasLafranceID
+            ? "\(base)--\(firstRecordID)--lafrance.png"
+            : nil
 
         let pageFilenames = tab.pages.enumerated().map { index, page in
-            let record = "\(base)-\(page.recordID).png"
+            let recordIDPart = page.recordID.isEmpty ? "" : "--\(page.recordID)"
+            let record = "\(base)\(recordIDPart).png"
+            let parsed = "\(base)\(recordIDPart)--parsed.txt"
             let count = closeupCounts?[safe: index] ?? 1
             let closeups: [String]
             if count <= 1 {
-                closeups = ["\(base)-\(page.recordID)-closeup.png"]
+                closeups = ["\(base)\(recordIDPart)--closeup.png"]
             } else {
                 closeups = (1...count).map { n in
-                    "\(base)-\(page.recordID)-closeup-\(n).png"
+                    "\(base)\(recordIDPart)--closeup-\(n).png"
                 }
             }
-            return PageFilenames(record: record, closeups: closeups)
+            return PageFilenames(record: record, closeups: closeups, parsed: parsed)
         }
 
         return RecordFilenames(lafrance: lafrance, pages: pageFilenames)
@@ -47,11 +54,11 @@ enum FilenameBuilder {
             let bride = people.first { $0.id == tab.personIDs[safe: 1] }
             let groomName = formatName(groom)
             let brideName = formatName(bride)
-            return "\(year)-\(type)-\(groomName)-\(brideName)"
-        case .birth, .sepulture:
+            return "\(year)--\(type)--\(groomName)__\(brideName)"
+        case .birth, .sepulture, .obituary, .thanks:
             let person = people.first { $0.id == tab.personIDs[safe: 0] }
             let name = formatName(person)
-            return "\(year)-\(type)-\(name)"
+            return "\(year)--\(type)--\(name)"
         }
     }
 

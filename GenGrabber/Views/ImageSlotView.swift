@@ -3,6 +3,7 @@ import SwiftUI
 struct ImageSlotView: View {
     let label: String
     @Binding var image: NSImage?
+    var onPreview: (() -> Void)?
     @FocusState private var isFocused: Bool
     @State private var showPreview = false
 
@@ -22,7 +23,13 @@ struct ImageSlotView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(maxHeight: 120)
-                        .onTapGesture { showPreview = true }
+                        .onTapGesture {
+                            if let onPreview {
+                                onPreview()
+                            } else {
+                                showPreview = true
+                            }
+                        }
                         .overlay(alignment: .topTrailing) {
                             Button {
                                 self.image = nil

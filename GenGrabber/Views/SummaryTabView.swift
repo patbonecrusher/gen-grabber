@@ -51,8 +51,10 @@ struct SummaryTabView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 12) {
-                        ForEach(session.summary.records.indices, id: \.self) { recordIndex in
-                            recordGroupBox(recordIndex: recordIndex)
+                        ForEach(session.summary.records) { record in
+                            if let recordIndex = session.summary.records.firstIndex(where: { $0.id == record.id }) {
+                                recordGroupBox(recordIndex: recordIndex)
+                            }
                         }
                     }
                     .padding(12)
@@ -89,6 +91,7 @@ struct SummaryTabView: View {
 
     @ViewBuilder
     private func recordGroupBox(recordIndex: Int) -> some View {
+        let recordID = session.summary.records[recordIndex].id
         GroupBox {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -103,10 +106,13 @@ struct SummaryTabView: View {
 
                 Divider()
 
-                ForEach(session.summary.records[recordIndex].persons.indices, id: \.self) { personIndex in
-                    personFields(recordIndex: recordIndex, personIndex: personIndex)
-                    if personIndex < session.summary.records[recordIndex].persons.count - 1 {
-                        Divider()
+                ForEach(session.summary.records[recordIndex].persons) { person in
+                    if let ri = session.summary.records.firstIndex(where: { $0.id == recordID }),
+                       let pi = session.summary.records[ri].persons.firstIndex(where: { $0.id == person.id }) {
+                        personFields(recordIndex: ri, personIndex: pi)
+                        if pi < session.summary.records[ri].persons.count - 1 {
+                            Divider()
+                        }
                     }
                 }
 
@@ -121,7 +127,7 @@ struct SummaryTabView: View {
                     Spacer()
 
                     Button(role: .destructive) {
-                        session.summary.records.remove(at: recordIndex)
+                        session.summary.records.removeAll { $0.id == recordID }
                     } label: {
                         Label("Remove Record", systemImage: "trash")
                     }
