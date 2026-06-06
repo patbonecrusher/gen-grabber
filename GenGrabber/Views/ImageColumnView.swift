@@ -14,19 +14,31 @@ struct ImageColumnView: View {
     @State private var showParseError = false
     @State private var preview: ImagePreview?
 
-    private var tabID: UUID { session.tabs[tabIndex].id }
+    private var tabID: UUID? {
+        session.tabs.indices.contains(tabIndex) ? session.tabs[tabIndex].id : nil
+    }
 
     private var showLaFranceSection: Bool {
+        guard session.tabs.indices.contains(tabIndex) else { return false }
         let type = session.tabs[tabIndex].recordType
         switch type {
         case .birth, .wedding, .sepulture:
             return true
         case .obituary, .thanks:
             return session.tabs[tabIndex].lafranceImage != nil
+        case .misc:
+            return false
         }
     }
 
     var body: some View {
+        if session.tabs.indices.contains(tabIndex) {
+            content
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 // LaFrance — only for record types that use it, or when an image is already loaded
@@ -110,11 +122,11 @@ struct ImageColumnView: View {
                     aiSettings: aiSettings,
                     onDismiss: { preview = nil }
                 )
-            } else {
-                // LaFrance or invalid index — preview only, no parsed text binding
+            } else if session.tabs.indices.contains(tabIndex) {
+                // LaFrance image
                 ImageDetailView(
                     image: item.image,
-                    parsedText: .constant(""),
+                    parsedText: $session.tabs[tabIndex].lafranceParsedText,
                     aiSettings: aiSettings,
                     onDismiss: { preview = nil }
                 )
@@ -124,15 +136,16 @@ struct ImageColumnView: View {
 
     private func parseLaFrance() {
         // Capture the tab ID and image snapshot NOW, before the async call
-        let currentTabID = tabID
-        guard let image = session.tabs[tabIndex].lafranceImage else { return }
+        guard let currentTabID = tabID else { return }
+        guard session.tabs.indices.contains(tabIndex),
+              let image = session.tabs[tabIndex].lafranceImage else { return }
         let baseURL = aiSettings.baseURL
         let token = aiSettings.token
         let model = aiSettings.model
 
         isParsing = true
         parseTabID = currentTabID
-        parseTabLabel = session.tabLabel(for: session.tabs[tabIndex])
+        parseTabLabel = session.tabLabel(for: session.tabs[tabIndex])  // safe: guarded above
 
         Task {
             do {

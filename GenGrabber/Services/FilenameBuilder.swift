@@ -19,11 +19,14 @@ enum FilenameBuilder {
     ) -> RecordFilenames {
         let base = buildBase(for: tab, people: people)
         let firstRecordID = tab.pages.first?.recordID ?? ""
-        let hasLafranceID = firstRecordID.hasPrefix("d") && firstRecordID.contains("p_")
 
-        let lafrance: String? = hasLafranceID
-            ? "\(base)--\(firstRecordID)--lafrance.png"
-            : nil
+        let lafrance: String?
+        if tab.lafranceImage != nil {
+            let recordIDPart = firstRecordID.isEmpty ? "" : "--\(firstRecordID)"
+            lafrance = "\(base)\(recordIDPart)--lafrance.png"
+        } else {
+            lafrance = nil
+        }
 
         let pageFilenames = tab.pages.enumerated().map { index, page in
             let recordIDPart = page.recordID.isEmpty ? "" : "--\(page.recordID)"
@@ -59,6 +62,9 @@ enum FilenameBuilder {
             let person = people.first { $0.id == tab.personIDs[safe: 0] }
             let name = formatName(person)
             return "\(year)--\(type)--\(name)"
+        case .misc:
+            let label = tab.customLabel.isEmpty ? "misc" : normalize(tab.customLabel)
+            return label
         }
     }
 

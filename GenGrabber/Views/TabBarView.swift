@@ -59,6 +59,8 @@ struct TabBarView: View {
                 Divider()
                 Button("Obituary") { showPickerFor = .obituary }
                 Button("Thanks") { showPickerFor = .thanks }
+                Divider()
+                Button("Misc") { session.addTab(type: .misc, personIDs: []) }
             } label: {
                 Label("Add Record", systemImage: "plus")
                     .font(.caption2)

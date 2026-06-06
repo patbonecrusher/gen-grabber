@@ -24,6 +24,12 @@ enum FileSaver {
                 if saveImage(image, named: lafranceFilename, to: folderURL) {
                     fileCount += 1
                 }
+                if !tab.lafranceParsedText.isEmpty {
+                    let parsedFilename = lafranceFilename.replacingOccurrences(of: ".png", with: "--parsed.txt")
+                    let parsedURL = folderURL.appendingPathComponent(parsedFilename)
+                    try? tab.lafranceParsedText.write(to: parsedURL, atomically: true, encoding: .utf8)
+                    fileCount += 1
+                }
             }
 
             // Save page images and parsed text

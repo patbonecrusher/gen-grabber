@@ -49,16 +49,23 @@ enum FolderLoader {
 
         // Collect parsed text files (--parsed.txt) keyed by their record key + record ID
         // e.g. "1845--b--girard-joseph--d13p_12345--parsed.txt" → key "d13p_12345"
-        // We parse them with the new format parser to extract type/names/recordID
+        // LaFrance parsed text: "base--recordID--lafrance--parsed.txt" → keyed separately
         var parsedTexts: [String: String] = [:]  // recordID → text
         var parsedTextsByRecordKey: [String: String] = [:]  // recordKey → text (fallback)
+        var lafranceParsedTexts: [String: String] = [:]  // recordKey → lafrance parsed text
         for url in files where url.lastPathComponent.hasSuffix("--parsed.txt") {
             guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
-            // Strip "--parsed.txt" to get the base, then strip extension that was already removed
             let filename = url.lastPathComponent
-            // Parse: split on -- to extract parts
             let parts = filename.replacingOccurrences(of: "--parsed.txt", with: "")
                 .components(separatedBy: "--")
+
+            // Check for lafrance parsed text (ends with --lafrance--parsed.txt)
+            if parts.last == "lafrance" {
+                let recordKey = parts.dropLast().joined(separator: "--")
+                lafranceParsedTexts[recordKey] = text
+                continue
+            }
+
             // Last non-"parsed" part is the recordID, earlier parts form the record key
             if parts.count >= 4 {
                 // year--type--names--recordID
@@ -128,6 +135,8 @@ enum FolderLoader {
                     registry: &peopleByName
                 )
                 personIDs = [person.id]
+            case .misc:
+                personIDs = []
             }
 
             // Group files by record ID to build pages
@@ -368,6 +377,9 @@ enum FolderLoader {
             let lastName = segments[0]
             let firstName = segments[1...].joined(separator: "-")
             return [lastName, firstName]
+
+        case .misc:
+            return segments
 
         case .wedding:
             // Need to split into groom and bride names

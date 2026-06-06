@@ -1,5 +1,8 @@
+import AppKit
 import Testing
 @testable import GenGrabber
+
+private let dummyImage = NSImage(size: NSSize(width: 1, height: 1))
 
 @Suite("FilenameBuilder")
 struct FilenameBuilderTests {
@@ -7,7 +10,7 @@ struct FilenameBuilderTests {
     func singlePageWedding() {
         let groom = Person(gender: .male, lastName: "Girard", firstName: "Joseph")
         let bride = Person(gender: .female, lastName: "Vanasse", firstName: "Marie Anne")
-        var tab = RecordTab(recordType: .wedding, personIDs: [groom.id, bride.id], year: "1732")
+        var tab = RecordTab(recordType: .wedding, personIDs: [groom.id, bride.id], year: "1732", lafranceImage: dummyImage)
         tab.pages[0].recordID = "d1p_1142c0453"
 
         let filenames = FilenameBuilder.filenames(for: tab, people: [groom, bride])
@@ -21,7 +24,7 @@ struct FilenameBuilderTests {
     func multiPageWedding() {
         let groom = Person(gender: .male, lastName: "Languirand", firstName: "Pierre")
         let bride = Person(gender: .female, lastName: "Levasseur", firstName: "Marie Anne")
-        var tab = RecordTab(recordType: .wedding, personIDs: [groom.id, bride.id], year: "1787")
+        var tab = RecordTab(recordType: .wedding, personIDs: [groom.id, bride.id], year: "1787", lafranceImage: dummyImage)
         tab.pages[0].recordID = "d1p_03871069"
         tab.pages.append(PageGroup(recordID: "d1p_03871070"))
 
@@ -37,7 +40,7 @@ struct FilenameBuilderTests {
     @Test("Birth filenames with LaFrance ID")
     func birth() {
         let person = Person(gender: .male, lastName: "Girard", firstName: "Joseph")
-        var tab = RecordTab(recordType: .birth, personIDs: [person.id], year: "1845")
+        var tab = RecordTab(recordType: .birth, personIDs: [person.id], year: "1845", lafranceImage: dummyImage)
         tab.pages[0].recordID = "d13p_12345"
 
         let filenames = FilenameBuilder.filenames(for: tab, people: [person])
@@ -49,7 +52,7 @@ struct FilenameBuilderTests {
     @Test("Sepulture filenames")
     func sepulture() {
         let person = Person(gender: .female, lastName: "Vanasse", firstName: "Marie Anne")
-        var tab = RecordTab(recordType: .sepulture, personIDs: [person.id], year: "1800")
+        var tab = RecordTab(recordType: .sepulture, personIDs: [person.id], year: "1800", lafranceImage: dummyImage)
         tab.pages[0].recordID = "d1p_99999"
 
         let filenames = FilenameBuilder.filenames(for: tab, people: [person])
@@ -81,15 +84,26 @@ struct FilenameBuilderTests {
         #expect(filenames.pages[0].record == "1955--th--laplante-ernest--la-courrier-de-st-hyacinthe.png")
     }
 
-    @Test("Non-LaFrance record ID yields nil lafrance filename")
-    func noLafranceForNonLafranceID() {
+    @Test("No lafrance filename when no lafrance image")
+    func noLafranceWithoutImage() {
         let person = Person(gender: .male, lastName: "Girard", firstName: "Joseph")
         var tab = RecordTab(recordType: .birth, personIDs: [person.id], year: "1845")
-        tab.pages[0].recordID = "ancestry-12345"
+        tab.pages[0].recordID = "d13p_12345"
 
         let filenames = FilenameBuilder.filenames(for: tab, people: [person])
 
         #expect(filenames.lafrance == nil)
+    }
+
+    @Test("Lafrance filename generated even with non-LaFrance record ID")
+    func lafranceWithNonStandardID() {
+        let person = Person(gender: .male, lastName: "Girard", firstName: "Joseph")
+        var tab = RecordTab(recordType: .birth, personIDs: [person.id], year: "1845", lafranceImage: dummyImage)
+        tab.pages[0].recordID = "ancestry-12345"
+
+        let filenames = FilenameBuilder.filenames(for: tab, people: [person])
+
+        #expect(filenames.lafrance == "1845--b--girard-joseph--ancestry-12345--lafrance.png")
     }
 
     @Test("Parsed text filename follows record base")
@@ -116,7 +130,7 @@ struct FilenameBuilderTests {
     @Test("Names are lowercased and spaces become hyphens")
     func nameNormalization() {
         let person = Person(gender: .male, lastName: "TREMBLAY", firstName: "Jean Baptiste")
-        var tab = RecordTab(recordType: .birth, personIDs: [person.id], year: "1900")
+        var tab = RecordTab(recordType: .birth, personIDs: [person.id], year: "1900", lafranceImage: dummyImage)
         tab.pages[0].recordID = "d1p_abc"
 
         let filenames = FilenameBuilder.filenames(for: tab, people: [person])

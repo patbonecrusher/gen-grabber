@@ -6,6 +6,7 @@ enum RecordType: String, CaseIterable, Sendable {
     case sepulture = "s"
     case obituary = "o"
     case thanks = "th"
+    case misc = "m"
 
     var label: String {
         switch self {
@@ -14,6 +15,7 @@ enum RecordType: String, CaseIterable, Sendable {
         case .sepulture: "Sepulture"
         case .obituary: "Obituary"
         case .thanks: "Thanks"
+        case .misc: "Misc"
         }
     }
 
@@ -24,6 +26,7 @@ enum RecordType: String, CaseIterable, Sendable {
         case .sepulture: "S"
         case .obituary: "O"
         case .thanks: "TH"
+        case .misc: "M"
         }
     }
 }

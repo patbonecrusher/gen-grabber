@@ -154,6 +154,9 @@ final class SessionModel: @unchecked Sendable {
         case .birth, .sepulture, .obituary, .thanks:
             let name = names.first.map { $0.firstName } ?? "?"
             return "\(tab.recordType.shortLabel): \(name)"
+        case .misc:
+            let label = tab.customLabel.isEmpty ? "Misc" : tab.customLabel
+            return "M: \(label)"
         }
     }
 

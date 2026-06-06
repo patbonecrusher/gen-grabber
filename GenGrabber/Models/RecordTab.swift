@@ -9,13 +9,16 @@ struct RecordTab: Identifiable, Sendable {
     var year: String
     var lafranceImage: NSImage?
     var pages: [PageGroup]
+    var customLabel: String
+    var lafranceParsedText: String
 
     init(
         id: UUID = UUID(),
         recordType: RecordType,
         personIDs: [UUID],
         year: String = "",
-        lafranceImage: NSImage? = nil
+        lafranceImage: NSImage? = nil,
+        customLabel: String = ""
     ) {
         self.id = id
         self.recordType = recordType
@@ -23,5 +26,7 @@ struct RecordTab: Identifiable, Sendable {
         self.year = year
         self.lafranceImage = lafranceImage
         self.pages = [PageGroup()]
+        self.customLabel = customLabel
+        self.lafranceParsedText = ""
     }
 }
