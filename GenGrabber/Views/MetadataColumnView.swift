@@ -50,8 +50,9 @@ struct MetadataColumnView: View {
                     }
                 }
 
-                // Page groups
-                ForEach(Array(session.tabs[tabIndex].pages.indices), id: \.self) { pageIndex in
+                // Page groups — iterate by ID to avoid stale index bindings on removal
+                ForEach($session.tabs[tabIndex].pages) { $page in
+                    let pageIndex = session.tabs[tabIndex].pages.firstIndex { $0.id == page.id } ?? 0
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text("PAGE \(pageIndex + 1)")
@@ -61,7 +62,7 @@ struct MetadataColumnView: View {
                             Spacer()
                             if pageIndex > 0 {
                                 Button {
-                                    session.tabs[tabIndex].pages.remove(at: pageIndex)
+                                    session.tabs[tabIndex].pages.removeAll { $0.id == page.id }
                                 } label: {
                                     Image(systemName: "xmark.circle")
                                         .font(.caption)
@@ -75,7 +76,7 @@ struct MetadataColumnView: View {
                             Text("SOURCE / ID")
                                 .font(.system(size: 9))
                                 .foregroundStyle(.secondary)
-                            TextField("e.g. d1p_12345 or newspaper name", text: $session.tabs[tabIndex].pages[pageIndex].recordID)
+                            TextField("e.g. d1p_12345 or newspaper name", text: $page.recordID)
                                 .textFieldStyle(.roundedBorder)
                                 .font(.caption.monospaced())
                         }
