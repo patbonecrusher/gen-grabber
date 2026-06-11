@@ -2,10 +2,14 @@ import SwiftUI
 
 struct MetadataColumnView: View {
     @Bindable var session: SessionModel
-    let tabIndex: Int
+    let tabID: UUID
+
+    private var tabIndex: Int? {
+        session.tabs.firstIndex { $0.id == tabID }
+    }
 
     var body: some View {
-        if session.tabs.indices.contains(tabIndex) {
+        if let tabIndex, session.tabs.indices.contains(tabIndex) {
             let tab = session.tabs[tabIndex]
             VStack(alignment: .leading, spacing: 10) {
                 if tab.recordType == .misc {
@@ -52,7 +56,9 @@ struct MetadataColumnView: View {
 
                 // Page groups — iterate by ID to avoid stale index bindings on removal
                 ForEach($session.tabs[tabIndex].pages) { $page in
-                    let pageIndex = session.tabs[tabIndex].pages.firstIndex { $0.id == page.id } ?? 0
+                    let pageIndex = session.tabs.indices.contains(tabIndex)
+                        ? (session.tabs[tabIndex].pages.firstIndex { $0.id == page.id } ?? 0)
+                        : 0
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text("PAGE \(pageIndex + 1)")
@@ -62,7 +68,8 @@ struct MetadataColumnView: View {
                             Spacer()
                             if pageIndex > 0 {
                                 Button {
-                                    session.tabs[tabIndex].pages.removeAll { $0.id == page.id }
+                                    guard let idx = session.tabs.firstIndex(where: { $0.id == tabID }) else { return }
+                                    session.tabs[idx].pages.removeAll { $0.id == page.id }
                                 } label: {
                                     Image(systemName: "xmark.circle")
                                         .font(.caption)
@@ -88,7 +95,8 @@ struct MetadataColumnView: View {
 
                 // Add page button
                 Button {
-                    session.tabs[tabIndex].pages.append(PageGroup())
+                    guard let idx = session.tabs.firstIndex(where: { $0.id == tabID }) else { return }
+                    session.tabs[idx].pages.append(PageGroup())
                 } label: {
                     Label("Add Page", systemImage: "plus")
                         .font(.caption)

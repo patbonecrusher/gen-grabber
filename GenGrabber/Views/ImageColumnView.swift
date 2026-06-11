@@ -3,7 +3,7 @@ import SwiftUI
 struct ImageColumnView: View {
     @Bindable var session: SessionModel
     var aiSettings: AISettings
-    let tabIndex: Int
+    let tabID: UUID
 
     @State private var isParsing = false
     @State private var parseResult: ParsedRecord?
@@ -14,12 +14,12 @@ struct ImageColumnView: View {
     @State private var showParseError = false
     @State private var preview: ImagePreview?
 
-    private var tabID: UUID? {
-        session.tabs.indices.contains(tabIndex) ? session.tabs[tabIndex].id : nil
+    private var tabIndex: Int? {
+        session.tabs.firstIndex { $0.id == tabID }
     }
 
     private var showLaFranceSection: Bool {
-        guard session.tabs.indices.contains(tabIndex) else { return false }
+        guard let tabIndex else { return false }
         let type = session.tabs[tabIndex].recordType
         switch type {
         case .birth, .wedding, .sepulture:
@@ -32,13 +32,13 @@ struct ImageColumnView: View {
     }
 
     var body: some View {
-        if session.tabs.indices.contains(tabIndex) {
-            content
+        if let tabIndex {
+            content(tabIndex: tabIndex)
         }
     }
 
     @ViewBuilder
-    private var content: some View {
+    private func content(tabIndex: Int) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 // LaFrance — only for record types that use it, or when an image is already loaded
@@ -80,14 +80,19 @@ struct ImageColumnView: View {
                     }
                 }
 
-                // Page groups
-                ForEach(Array(session.tabs[tabIndex].pages.indices), id: \.self) { pageIndex in
+                // Page groups — iterate over element bindings keyed by PageGroup.id so a
+                // removal never leaves a stale index-based binding to read out of bounds.
+                ForEach($session.tabs[tabIndex].pages) { $page in
+                    let pageIndex = session.tabs.indices.contains(tabIndex)
+                        ? (session.tabs[tabIndex].pages.firstIndex { $0.id == page.id } ?? 0)
+                        : 0
                     PageGroupView(
                         pageNumber: pageIndex + 1,
-                        page: $session.tabs[tabIndex].pages[pageIndex],
+                        page: $page,
                         canRemove: pageIndex > 0,
                         onRemove: {
-                            session.tabs[tabIndex].pages.remove(at: pageIndex)
+                            guard let idx = session.tabs.firstIndex(where: { $0.id == tabID }) else { return }
+                            session.tabs[idx].pages.removeAll { $0.id == page.id }
                         },
                         onImageTap: { image in
                             preview = ImagePreview(image: image, pageIndex: pageIndex)
@@ -114,19 +119,19 @@ struct ImageColumnView: View {
         }
         .sheet(item: $preview) { item in
             if let pageIdx = item.pageIndex,
-               session.tabs.indices.contains(tabIndex),
-               session.tabs[tabIndex].pages.indices.contains(pageIdx) {
+               let ti = session.tabs.firstIndex(where: { $0.id == tabID }),
+               session.tabs[ti].pages.indices.contains(pageIdx) {
                 ImageDetailView(
                     image: item.image,
-                    parsedText: $session.tabs[tabIndex].pages[pageIdx].parsedText,
+                    parsedText: $session.tabs[ti].pages[pageIdx].parsedText,
                     aiSettings: aiSettings,
                     onDismiss: { preview = nil }
                 )
-            } else if session.tabs.indices.contains(tabIndex) {
+            } else if let ti = session.tabs.firstIndex(where: { $0.id == tabID }) {
                 // LaFrance image
                 ImageDetailView(
                     image: item.image,
-                    parsedText: $session.tabs[tabIndex].lafranceParsedText,
+                    parsedText: $session.tabs[ti].lafranceParsedText,
                     aiSettings: aiSettings,
                     onDismiss: { preview = nil }
                 )
@@ -135,17 +140,15 @@ struct ImageColumnView: View {
     }
 
     private func parseLaFrance() {
-        // Capture the tab ID and image snapshot NOW, before the async call
-        guard let currentTabID = tabID else { return }
-        guard session.tabs.indices.contains(tabIndex),
-              let image = session.tabs[tabIndex].lafranceImage else { return }
+        guard let idx = session.tabs.firstIndex(where: { $0.id == tabID }),
+              let image = session.tabs[idx].lafranceImage else { return }
         let baseURL = aiSettings.baseURL
         let token = aiSettings.token
         let model = aiSettings.model
 
         isParsing = true
-        parseTabID = currentTabID
-        parseTabLabel = session.tabLabel(for: session.tabs[tabIndex])  // safe: guarded above
+        parseTabID = tabID
+        parseTabLabel = session.tabLabel(for: session.tabs[idx])
 
         Task {
             do {
@@ -168,7 +171,6 @@ struct ImageColumnView: View {
 
     private func applyParseResult() {
         guard let result = parseResult, let savedTabID = parseTabID else { return }
-        // Apply to the tab that was parsed, not whatever tab is currently selected
         guard let idx = session.tabs.firstIndex(where: { $0.id == savedTabID }) else { return }
         session.tabs[idx].year = result.year
         if session.tabs[idx].pages.indices.contains(0) {

@@ -26,8 +26,8 @@ struct ContentView: View {
             Group {
                 switch session.selection {
                 case .record(let id):
-                    if let tabIndex = session.tabs.firstIndex(where: { $0.id == id }) {
-                        RecordTabView(session: session, aiSettings: aiSettings, tabIndex: tabIndex)
+                    if session.tabs.contains(where: { $0.id == id }) {
+                        RecordTabView(session: session, aiSettings: aiSettings, tabID: id)
                             .id(id)
                     }
                 case .notes:
