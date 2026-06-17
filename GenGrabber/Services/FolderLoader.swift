@@ -197,7 +197,7 @@ enum FolderLoader {
                 pages.append(page)
             }
 
-            var tab = RecordTab(recordType: recordType, personIDs: personIDs, year: first.year)
+            var tab = RecordTab(recordType: recordType, personIDs: personIDs, year: first.year, isUnsure: first.isUnsure)
             tab.lafranceImage = lafranceImage
             tab.pages = pages
 
@@ -223,6 +223,7 @@ enum FolderLoader {
         let names: [String] // [lastName, firstName] or [groomLast, groomFirst, brideLast, brideFirst]
         let recordID: String
         let suffix: FileSuffix
+        let isUnsure: Bool
         var recordKey: String { "\(year)-\(recordType.rawValue)-\(names.joined(separator: "-"))" }
     }
 
@@ -257,7 +258,11 @@ enum FolderLoader {
         }
 
         // Remaining sections are source/recordID and suffix
-        let remaining = Array(sections.dropFirst(3))
+        var remaining = Array(sections.dropFirst(3))
+
+        // Detect and strip "unsure" flag
+        let isUnsure = remaining.contains("unsure")
+        remaining.removeAll { $0 == "unsure" }
 
         // Identify suffix (last section if it's a known keyword)
         let knownSuffixes: Set<String> = ["lafrance", "closeup", "parsed"]
@@ -302,7 +307,8 @@ enum FolderLoader {
             recordType: recordType,
             names: names,
             recordID: recordID,
-            suffix: suffix
+            suffix: suffix,
+            isUnsure: isUnsure
         )
     }
 
@@ -364,7 +370,8 @@ enum FolderLoader {
             recordType: recordType,
             names: names,
             recordID: recordID,
-            suffix: suffix
+            suffix: suffix,
+            isUnsure: false
         )
     }
 

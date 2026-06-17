@@ -1,6 +1,13 @@
 import AppKit
 import Foundation
 
+@Observable
+final class SaveProgress {
+    var total: Int = 0
+    var completed: Int = 0
+    var fraction: Double { total > 0 ? Double(completed) / Double(total) : 0 }
+}
+
 enum FileSaver {
     struct SaveResult: Sendable {
         let fileCount: Int
@@ -8,8 +15,26 @@ enum FileSaver {
     }
 
     @MainActor
-    static func saveAll(session: SessionModel) async -> SaveResult? {
+    static func saveAll(session: SessionModel, progress: SaveProgress? = nil) async -> SaveResult? {
         guard let folderURL = pickFolder() else { return nil }
+
+        // Count total work items for progress
+        var totalItems = 0
+        for tab in session.tabs {
+            if tab.lafranceImage != nil { totalItems += 1 }
+            if tab.lafranceImage != nil && !tab.lafranceParsedText.isEmpty { totalItems += 1 }
+            for page in tab.pages {
+                if page.recordImage != nil { totalItems += 1 }
+                if !page.parsedText.isEmpty { totalItems += 1 }
+                totalItems += page.closeupImages.compactMap({ $0 }).count
+            }
+        }
+        totalItems += session.otherFiles.files.count
+        totalItems += session.notes.filter { !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count
+        if !session.summary.records.isEmpty { totalItems += 1 }
+
+        progress?.total = totalItems
+        progress?.completed = 0
 
         var fileCount = 0
 
@@ -24,11 +49,13 @@ enum FileSaver {
                 if saveImage(image, named: lafranceFilename, to: folderURL) {
                     fileCount += 1
                 }
+                progress?.completed += 1
                 if !tab.lafranceParsedText.isEmpty {
                     let parsedFilename = lafranceFilename.replacingOccurrences(of: ".png", with: "--parsed.txt")
                     let parsedURL = folderURL.appendingPathComponent(parsedFilename)
                     try? tab.lafranceParsedText.write(to: parsedURL, atomically: true, encoding: .utf8)
                     fileCount += 1
+                    progress?.completed += 1
                 }
             }
 
@@ -41,12 +68,14 @@ enum FileSaver {
                     if saveImage(image, named: pageFilenames.record, to: folderURL) {
                         fileCount += 1
                     }
+                    progress?.completed += 1
                 }
 
                 if !page.parsedText.isEmpty {
                     let parsedURL = folderURL.appendingPathComponent(pageFilenames.parsed)
                     try? page.parsedText.write(to: parsedURL, atomically: true, encoding: .utf8)
                     fileCount += 1
+                    progress?.completed += 1
                 }
 
                 for (closeupIndex, closeupImage) in page.closeupImages.enumerated() {
@@ -54,6 +83,7 @@ enum FileSaver {
                         if saveImage(image, named: pageFilenames.closeups[closeupIndex], to: folderURL) {
                             fileCount += 1
                         }
+                        progress?.completed += 1
                     }
                 }
             }
@@ -66,6 +96,7 @@ enum FileSaver {
                     fileCount += 1
                 }
             }
+            progress?.completed += 1
         }
 
         // Save notes
@@ -75,6 +106,7 @@ enum FileSaver {
             let noteURL = folderURL.appendingPathComponent(note.filename)
             try? note.content.write(to: noteURL, atomically: true, encoding: .utf8)
             fileCount += 1
+            progress?.completed += 1
         }
 
         // Save summary JSON
@@ -86,6 +118,7 @@ enum FileSaver {
                 try? jsonData.write(to: jsonURL)
                 fileCount += 1
             }
+            progress?.completed += 1
         }
 
         return SaveResult(fileCount: fileCount, folder: folderURL)

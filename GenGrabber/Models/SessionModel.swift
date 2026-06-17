@@ -146,17 +146,18 @@ final class SessionModel: @unchecked Sendable {
 
     func tabLabel(for tab: RecordTab) -> String {
         let names = tab.personIDs.compactMap { person(for: $0) }
+        let unsureSuffix = tab.isUnsure ? "?" : ""
         switch tab.recordType {
         case .wedding:
             let groom = names.first.map { $0.firstName } ?? "?"
             let bride = names.dropFirst().first.map { $0.firstName } ?? "?"
-            return "W: \(groom) + \(bride)"
+            return "W: \(groom) + \(bride)\(unsureSuffix)"
         case .birth, .sepulture, .obituary, .thanks:
             let name = names.first.map { $0.firstName } ?? "?"
-            return "\(tab.recordType.shortLabel): \(name)"
+            return "\(tab.recordType.shortLabel): \(name)\(unsureSuffix)"
         case .misc:
             let label = tab.customLabel.isEmpty ? "Misc" : tab.customLabel
-            return "M: \(label)"
+            return "M: \(label)\(unsureSuffix)"
         }
     }
 

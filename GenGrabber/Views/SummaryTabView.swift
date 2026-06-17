@@ -5,7 +5,8 @@ struct SummaryTabView: View {
     var aiSettings: AISettings
 
     @State private var isGenerating = false
-    @State private var progressText = ""
+    @State private var generationCompleted = 0
+    @State private var generationTotal = 0
     @State private var errorMessage: String?
     @State private var showOverwriteConfirmation = false
 
@@ -19,9 +20,9 @@ struct SummaryTabView: View {
                 Spacer()
 
                 if isGenerating {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text(progressText)
+                    ProgressView(value: generationTotal > 0 ? Double(generationCompleted) / Double(generationTotal) : 0)
+                        .frame(width: 120)
+                    Text("\(generationCompleted)/\(generationTotal)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
@@ -179,11 +180,10 @@ struct SummaryTabView: View {
 
         Task {
             let tabsWithLafrance = session.tabs.enumerated().filter { $0.element.lafranceImage != nil }
-            let total = tabsWithLafrance.count
+            generationTotal = tabsWithLafrance.count
+            generationCompleted = 0
 
             for (index, (_, tab)) in tabsWithLafrance.enumerated() {
-                progressText = "Processing record \(index + 1) of \(total)..."
-
                 guard let image = tab.lafranceImage else { continue }
 
                 do {
@@ -199,14 +199,15 @@ struct SummaryTabView: View {
                     errorMessage = "Error on record \(index + 1): \(error.localizedDescription)"
                 }
 
+                generationCompleted = index + 1
+
                 // Delay between requests to avoid rate limits
-                if index < total - 1 {
+                if index < tabsWithLafrance.count - 1 {
                     try? await Task.sleep(for: .seconds(3))
                 }
             }
 
             isGenerating = false
-            progressText = ""
         }
     }
 }

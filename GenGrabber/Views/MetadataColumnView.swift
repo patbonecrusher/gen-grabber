@@ -12,6 +12,11 @@ struct MetadataColumnView: View {
         if let tabIndex, session.tabs.indices.contains(tabIndex) {
             let tab = session.tabs[tabIndex]
             VStack(alignment: .leading, spacing: 10) {
+                Toggle("Unsure", isOn: $session.tabs[tabIndex].isUnsure)
+                    .toggleStyle(.checkbox)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
                 if tab.recordType == .misc {
                     // Custom label for misc records
                     VStack(alignment: .leading, spacing: 2) {

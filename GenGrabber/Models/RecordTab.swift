@@ -11,6 +11,7 @@ struct RecordTab: Identifiable, Sendable {
     var pages: [PageGroup]
     var customLabel: String
     var lafranceParsedText: String
+    var isUnsure: Bool
 
     init(
         id: UUID = UUID(),
@@ -18,7 +19,8 @@ struct RecordTab: Identifiable, Sendable {
         personIDs: [UUID],
         year: String = "",
         lafranceImage: NSImage? = nil,
-        customLabel: String = ""
+        customLabel: String = "",
+        isUnsure: Bool = false
     ) {
         self.id = id
         self.recordType = recordType
@@ -28,5 +30,6 @@ struct RecordTab: Identifiable, Sendable {
         self.pages = [PageGroup()]
         self.customLabel = customLabel
         self.lafranceParsedText = ""
+        self.isUnsure = isUnsure
     }
 }

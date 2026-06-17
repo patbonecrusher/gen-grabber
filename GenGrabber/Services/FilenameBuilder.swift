@@ -17,7 +17,8 @@ enum FilenameBuilder {
         people: [Person],
         closeupCounts: [Int]? = nil
     ) -> RecordFilenames {
-        let base = buildBase(for: tab, people: people)
+        var base = buildBase(for: tab, people: people)
+        if tab.isUnsure { base += "--unsure" }
         let firstRecordID = tab.pages.first?.recordID ?? ""
 
         let lafrance: String?

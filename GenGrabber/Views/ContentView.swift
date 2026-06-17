@@ -8,6 +8,8 @@ struct ContentView: View {
     @State private var saveResult: FileSaver.SaveResult?
     @State private var showSaveConfirmation = false
     @State private var showSettings = false
+    @State private var saveProgress: SaveProgress?
+    @State private var showMissingSummaryWarning = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -68,11 +70,10 @@ struct ContentView: View {
                 .controlSize(.small)
 
                 Button("Save All...") {
-                    Task {
-                        if let result = await FileSaver.saveAll(session: session) {
-                            saveResult = result
-                            showSaveConfirmation = true
-                        }
+                    if session.summary.records.isEmpty && !session.tabs.isEmpty {
+                        showMissingSummaryWarning = true
+                    } else {
+                        performSave()
                     }
                 }
                 .controlSize(.small)
@@ -109,6 +110,42 @@ struct ContentView: View {
             if let result = saveResult {
                 Text("Saved \(result.fileCount) files to \(result.folder.lastPathComponent)/")
             }
+        }
+        .alert("No Summary", isPresented: $showMissingSummaryWarning) {
+            Button("Cancel", role: .cancel) {}
+            Button("Save Anyway") { performSave() }
+        } message: {
+            Text("The AI summary has not been generated. Save without it?")
+        }
+        .overlay {
+            if let progress = saveProgress {
+                ZStack {
+                    Color.black.opacity(0.3)
+                    VStack(spacing: 12) {
+                        Text("Saving...")
+                            .font(.headline)
+                        ProgressView(value: progress.fraction)
+                            .frame(width: 200)
+                        Text("\(progress.completed) / \(progress.total)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(24)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                }
+            }
+        }
+    }
+
+    private func performSave() {
+        let progress = SaveProgress()
+        saveProgress = progress
+        Task {
+            if let result = await FileSaver.saveAll(session: session, progress: progress) {
+                saveResult = result
+                showSaveConfirmation = true
+            }
+            saveProgress = nil
         }
     }
 

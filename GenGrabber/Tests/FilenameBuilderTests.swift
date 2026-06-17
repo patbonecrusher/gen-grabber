@@ -152,6 +152,32 @@ struct FilenameBuilderTests {
         ])
     }
 
+    @Test("Unsure birth record includes --unsure in filenames")
+    func unsureBirth() {
+        let person = Person(gender: .male, lastName: "Girard", firstName: "Joseph")
+        var tab = RecordTab(recordType: .birth, personIDs: [person.id], year: "1845", lafranceImage: dummyImage, isUnsure: true)
+        tab.pages[0].recordID = "d13p_12345"
+
+        let filenames = FilenameBuilder.filenames(for: tab, people: [person])
+
+        #expect(filenames.lafrance == "1845--b--girard-joseph--unsure--d13p_12345--lafrance.png")
+        #expect(filenames.pages[0].record == "1845--b--girard-joseph--unsure--d13p_12345.png")
+        #expect(filenames.pages[0].closeups == ["1845--b--girard-joseph--unsure--d13p_12345--closeup.png"])
+    }
+
+    @Test("Unsure wedding record includes --unsure in filenames")
+    func unsureWedding() {
+        let groom = Person(gender: .male, lastName: "Girard", firstName: "Joseph")
+        let bride = Person(gender: .female, lastName: "Vanasse", firstName: "Marie Anne")
+        var tab = RecordTab(recordType: .wedding, personIDs: [groom.id, bride.id], year: "1732", lafranceImage: dummyImage, isUnsure: true)
+        tab.pages[0].recordID = "d1p_1142c0453"
+
+        let filenames = FilenameBuilder.filenames(for: tab, people: [groom, bride])
+
+        #expect(filenames.lafrance == "1732--w--girard-joseph__vanasse-marie-anne--unsure--d1p_1142c0453--lafrance.png")
+        #expect(filenames.pages[0].record == "1732--w--girard-joseph__vanasse-marie-anne--unsure--d1p_1142c0453.png")
+    }
+
     @Test("Empty record ID produces no -- separator for record ID")
     func emptyRecordID() {
         let person = Person(gender: .male, lastName: "Laplante", firstName: "Ernest")
