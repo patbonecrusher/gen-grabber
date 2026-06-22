@@ -10,27 +10,54 @@ struct SettingsView: View {
                 .font(.headline)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Base URL")
+                Text("Provider")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                TextField("http://localhost:11434/v1", text: $settings.baseURL)
-                    .textFieldStyle(.roundedBorder)
+                Picker("Provider", selection: $settings.provider) {
+                    ForEach(AIProvider.allCases) { provider in
+                        Text(provider.displayName).tag(provider)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+            }
+
+            if settings.provider == .openAICompatible {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Base URL")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField("http://localhost:11434/v1", text: $settings.baseURL)
+                        .textFieldStyle(.roundedBorder)
+                }
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("API Token")
+                Text(settings.provider == .anthropic ? "API Key" : "API Token")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                SecureField("Optional for local models", text: $settings.token)
-                    .textFieldStyle(.roundedBorder)
+                SecureField(
+                    settings.provider == .anthropic ? "sk-ant-…" : "Optional for local models",
+                    text: $settings.token
+                )
+                .textFieldStyle(.roundedBorder)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Model")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                TextField("e.g. gpt-4o, llava", text: $settings.model)
-                    .textFieldStyle(.roundedBorder)
+                if settings.provider == .anthropic {
+                    Picker("Model", selection: $settings.model) {
+                        ForEach(AISettings.claudeModels) { model in
+                            Text(model.name).tag(model.id)
+                        }
+                    }
+                    .labelsHidden()
+                } else {
+                    TextField("e.g. gpt-4o, llava", text: $settings.model)
+                        .textFieldStyle(.roundedBorder)
+                }
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -50,5 +77,7 @@ struct SettingsView: View {
         }
         .padding(20)
         .frame(width: 350)
+        .onAppear { settings.normalizeClaudeModel() }
+        .onChange(of: settings.provider) { settings.normalizeClaudeModel() }
     }
 }

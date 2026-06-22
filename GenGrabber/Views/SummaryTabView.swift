@@ -189,6 +189,7 @@ struct SummaryTabView: View {
                 do {
                     let record = try await AIParserService.extractFullRecord(
                         image: image,
+                        provider: aiSettings.provider,
                         baseURL: aiSettings.baseURL,
                         token: aiSettings.token,
                         model: aiSettings.model,

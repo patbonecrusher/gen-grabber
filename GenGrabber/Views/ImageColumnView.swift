@@ -154,6 +154,7 @@ struct ImageColumnView: View {
             do {
                 let result = try await AIParserService.parse(
                     image: image,
+                    provider: aiSettings.provider,
                     baseURL: baseURL,
                     token: token,
                     model: model,

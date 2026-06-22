@@ -166,6 +166,7 @@ struct ImageDetailView: View {
             do {
                 let text = try await AIParserService.extractText(
                     images: [image],
+                    provider: aiSettings.provider,
                     baseURL: baseURL,
                     token: token,
                     model: model,
