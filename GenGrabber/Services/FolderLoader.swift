@@ -204,7 +204,14 @@ enum FolderLoader {
             tabs.append(tab)
         }
 
-        let people = Array(peopleByName.values)
+        // If folder is empty, try to populate people from the folder name
+        // Format: 410-411--lastname-firstname__lastname-firstname
+        var people = Array(peopleByName.values)
+        if people.isEmpty && tabs.isEmpty {
+            let folderPeople = parseFolderName(folderURL.lastPathComponent)
+            people = folderPeople
+        }
+
         return LoadResult(people: people, tabs: tabs, notes: loadedNotes, summary: summary, otherFiles: otherFiles)
     }
 
@@ -431,6 +438,38 @@ enum FolderLoader {
             }
             return segments
         }
+    }
+
+    // MARK: - Folder Name Parsing
+    // Format: 410-411--lastname-firstname__lastname-firstname
+    // The ahnentafel numbers before -- are ignored.
+
+    private static func parseFolderName(_ name: String) -> [Person] {
+        let sections = name.components(separatedBy: "--")
+        guard sections.count >= 2 else { return [] }
+
+        // Everything after the first -- is the names part (rejoin in case of extra --)
+        let namesPart = sections.dropFirst().joined(separator: "--")
+
+        // Split on __ for husband and wife
+        let personParts = namesPart.components(separatedBy: "__")
+        guard personParts.count == 2 else { return [] }
+
+        let husbandSegments = personParts[0].split(separator: "-", maxSplits: 1).map(String.init)
+        let wifeSegments = personParts[1].split(separator: "-", maxSplits: 1).map(String.init)
+
+        let husband = Person(
+            gender: .male,
+            lastName: capitalize(husbandSegments[safe: 0] ?? ""),
+            firstName: capitalize(husbandSegments[safe: 1] ?? "")
+        )
+        let wife = Person(
+            gender: .female,
+            lastName: capitalize(wifeSegments[safe: 0] ?? ""),
+            firstName: capitalize(wifeSegments[safe: 1] ?? "")
+        )
+
+        return [husband, wife]
     }
 
     // MARK: - Helpers
