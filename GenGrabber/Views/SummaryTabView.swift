@@ -157,7 +157,13 @@ struct SummaryTabView: View {
                 LabeledTextField("Occupation", text: $session.summary.records[recordIndex].persons[personIndex].occupation)
             }
 
-            HStack {
+            let name = splitName(session.summary.records[recordIndex].persons[personIndex].name)
+            HStack(spacing: 8) {
+                PersonStatusButton(session: session, last: name.last, first: name.first)
+                StatusBadgeRow(
+                    statuses: session.statuses(last: name.last, first: name.first),
+                    origin: session.origin(last: name.last, first: name.first)
+                )
                 Spacer()
                 Button(role: .destructive) {
                     session.summary.records[recordIndex].persons.remove(at: personIndex)
@@ -169,6 +175,17 @@ struct SummaryTabView: View {
                 .foregroundStyle(.red)
             }
         }
+    }
+
+    /// Splits a "LASTNAME, Firstname" record name into last/first for status matching.
+    private func splitName(_ name: String) -> (last: String, first: String) {
+        let parts = name.components(separatedBy: ",")
+        if parts.count >= 2 {
+            let last = parts[0].trimmingCharacters(in: .whitespaces)
+            let first = parts[1...].joined(separator: ",").trimmingCharacters(in: .whitespaces)
+            return (last, first)
+        }
+        return (name.trimmingCharacters(in: .whitespaces), "")
     }
 
     private func generate() {

@@ -58,8 +58,23 @@ struct RecordSummary: Codable, Identifiable, Sendable {
 
 struct SessionSummary: Codable, Sendable {
     var records: [RecordSummary]
+    /// Manually-applied genealogical statuses, keyed by person name. Optional in the JSON so
+    /// older summary.json files (which lack this key) still decode.
+    var markedPeople: [PersonMark]
 
-    init(records: [RecordSummary] = []) {
+    init(records: [RecordSummary] = [], markedPeople: [PersonMark] = []) {
         self.records = records
+        self.markedPeople = markedPeople
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case records
+        case markedPeople
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.records = try container.decodeIfPresent([RecordSummary].self, forKey: .records) ?? []
+        self.markedPeople = try container.decodeIfPresent([PersonMark].self, forKey: .markedPeople) ?? []
     }
 }

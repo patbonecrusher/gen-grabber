@@ -215,6 +215,62 @@ final class SessionModel: @unchecked Sendable {
         notes.removeAll { $0.id == id }
     }
 
+    // MARK: - Genealogical status marks (name-keyed, persisted in summary.markedPeople)
+
+    private func markKey(last: String, first: String) -> String {
+        "\(last.trimmingCharacters(in: .whitespaces).lowercased())|\(first.trimmingCharacters(in: .whitespaces).lowercased())"
+    }
+
+    private func markIndex(last: String, first: String) -> Int? {
+        let key = markKey(last: last, first: first)
+        return summary.markedPeople.firstIndex { markKey(last: $0.lastName, first: $0.firstName) == key }
+    }
+
+    func statuses(last: String, first: String) -> Set<GenealogicalStatus> {
+        guard let i = markIndex(last: last, first: first) else { return [] }
+        return Set(summary.markedPeople[i].statuses)
+    }
+
+    func isMarked(_ status: GenealogicalStatus, last: String, first: String) -> Bool {
+        statuses(last: last, first: first).contains(status)
+    }
+
+    func setStatus(_ status: GenealogicalStatus, _ on: Bool, last: String, first: String) {
+        let i = ensureMark(last: last, first: first)
+        var set = Set(summary.markedPeople[i].statuses)
+        if on { set.insert(status) } else { set.remove(status) }
+        // Store in a stable (declaration) order.
+        summary.markedPeople[i].statuses = GenealogicalStatus.allCases.filter { set.contains($0) }
+        pruneMarkIfEmpty(at: i)
+    }
+
+    func origin(last: String, first: String) -> String {
+        guard let i = markIndex(last: last, first: first) else { return "" }
+        return summary.markedPeople[i].origin
+    }
+
+    func setOrigin(_ origin: String, last: String, first: String) {
+        let i = ensureMark(last: last, first: first)
+        summary.markedPeople[i].origin = origin
+        pruneMarkIfEmpty(at: i)
+    }
+
+    /// Index of the mark for this person, creating an empty one if needed.
+    private func ensureMark(last: String, first: String) -> Int {
+        if let i = markIndex(last: last, first: first) { return i }
+        summary.markedPeople.append(PersonMark(lastName: last, firstName: first))
+        return summary.markedPeople.count - 1
+    }
+
+    /// Drops a mark that no longer carries any status or origin, keeping summary.json clean.
+    private func pruneMarkIfEmpty(at index: Int) {
+        guard summary.markedPeople.indices.contains(index) else { return }
+        let m = summary.markedPeople[index]
+        if m.statuses.isEmpty && m.origin.trimmingCharacters(in: .whitespaces).isEmpty {
+            summary.markedPeople.remove(at: index)
+        }
+    }
+
     func loadFromResult(_ result: FolderLoader.LoadResult) {
         clearAll()
         people = result.people
