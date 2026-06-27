@@ -85,5 +85,12 @@ struct NotesTabView: View {
                 selectedNoteID = session.notes.first?.id
             }
         }
+        .onChange(of: session.notes.map(\.id)) {
+            // When a new folder is loaded the notes change out from under us; a
+            // stale selection from the previous folder would show the empty state.
+            if !session.notes.contains(where: { $0.id == selectedNoteID }) {
+                selectedNoteID = session.notes.first?.id
+            }
+        }
     }
 }
