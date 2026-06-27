@@ -10,6 +10,8 @@ struct ContentView: View {
     @State private var showSettings = false
     @State private var saveProgress: SaveProgress?
     @State private var showMissingSummaryWarning = false
+    @State private var pendingFolderURL: URL?
+    @State private var showNavConfirmation = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -58,6 +60,34 @@ struct ContentView: View {
                     Image(systemName: "gear")
                 }
                 .controlSize(.small)
+
+                Button {
+                    if let url = session.previousFolderURL { requestNavigate(to: url) }
+                } label: {
+                    Image(systemName: "chevron.left")
+                }
+                .controlSize(.small)
+                .disabled(session.previousFolderURL == nil)
+                .keyboardShortcut("[", modifiers: .command)
+                .help(session.previousFolderURL.map { "Previous folder: \($0.lastPathComponent)" }
+                    ?? "No previous folder")
+
+                if let position = session.folderPositionText {
+                    Text(position)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+
+                Button {
+                    if let url = session.nextFolderURL { requestNavigate(to: url) }
+                } label: {
+                    Image(systemName: "chevron.right")
+                }
+                .controlSize(.small)
+                .disabled(session.nextFolderURL == nil)
+                .keyboardShortcut("]", modifiers: .command)
+                .help(session.nextFolderURL.map { "Next folder: \($0.lastPathComponent)" }
+                    ?? "No next folder")
 
                 Button("Open Folder...") {
                     openFolder()
@@ -111,6 +141,15 @@ struct ContentView: View {
                 Text("Saved \(result.fileCount) files to \(result.folder.lastPathComponent)/")
             }
         }
+        .alert("Unsaved Changes", isPresented: $showNavConfirmation) {
+            Button("Cancel", role: .cancel) { pendingFolderURL = nil }
+            Button("Discard & Continue", role: .destructive) {
+                if let url = pendingFolderURL { navigateFolder(to: url) }
+                pendingFolderURL = nil
+            }
+        } message: {
+            Text("This folder has unsaved changes. Switch folders without saving?")
+        }
         .alert("No Summary", isPresented: $showMissingSummaryWarning) {
             Button("Cancel", role: .cancel) {}
             Button("Save Anyway") { performSave() }
@@ -144,9 +183,24 @@ struct ContentView: View {
             if let result = await FileSaver.saveAll(session: session, progress: progress) {
                 saveResult = result
                 showSaveConfirmation = true
+                session.markSaved()
             }
             saveProgress = nil
         }
+    }
+
+    private func requestNavigate(to url: URL) {
+        if session.hasUnsavedChanges {
+            pendingFolderURL = url
+            showNavConfirmation = true
+        } else {
+            navigateFolder(to: url)
+        }
+    }
+
+    private func navigateFolder(to url: URL) {
+        let result = FolderLoader.load(from: url)
+        session.loadFromResult(result)
     }
 
     private func openFolder() {

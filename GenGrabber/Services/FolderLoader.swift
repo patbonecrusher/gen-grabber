@@ -3,6 +3,7 @@ import Foundation
 
 enum FolderLoader {
     struct LoadResult {
+        var folderURL: URL
         var people: [Person]
         var tabs: [RecordTab]
         var notes: [Note]
@@ -22,6 +23,24 @@ enum FolderLoader {
 
         guard panel.runModal() == .OK, let folderURL = panel.url else { return nil }
         return load(from: folderURL)
+    }
+
+    /// Returns the sibling subfolders of the given folder (including itself), sorted
+    /// in natural order by name so numbered folders (0256, 0257, …) order correctly.
+    static func siblingFolders(of folderURL: URL) -> [URL] {
+        let parent = folderURL.deletingLastPathComponent()
+        let fm = FileManager.default
+        let contents = (try? fm.contentsOfDirectory(
+            at: parent,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        )) ?? []
+        let dirs = contents.filter {
+            (try? $0.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true
+        }
+        return dirs.sorted {
+            $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending
+        }
     }
 
     static func load(from folderURL: URL) -> LoadResult {
@@ -212,7 +231,7 @@ enum FolderLoader {
             people = folderPeople
         }
 
-        return LoadResult(people: people, tabs: tabs, notes: loadedNotes, summary: summary, otherFiles: otherFiles)
+        return LoadResult(folderURL: folderURL, people: people, tabs: tabs, notes: loadedNotes, summary: summary, otherFiles: otherFiles)
     }
 
     // MARK: - Filename Parsing

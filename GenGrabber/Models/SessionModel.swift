@@ -9,12 +9,54 @@ enum TabSelection: Equatable {
 
 @Observable
 final class SessionModel: @unchecked Sendable {
-    var people: [Person] = []
-    var tabs: [RecordTab] = []
-    var notes: [Note] = [Note(title: "notes")]
+    var people: [Person] = [] { didSet { markDirty() } }
+    var tabs: [RecordTab] = [] { didSet { markDirty() } }
+    var notes: [Note] = [Note(title: "notes")] { didSet { markDirty() } }
     var selection: TabSelection = .summary
-    var summary: SessionSummary = SessionSummary()
-    var otherFiles = OtherFilesCollection()
+    var summary: SessionSummary = SessionSummary() { didSet { markDirty() } }
+    var otherFiles = OtherFilesCollection() { didSet { markDirty() } }
+
+    /// The folder the current session was loaded from (nil if loaded manually / empty).
+    private(set) var currentFolderURL: URL?
+    /// Sibling subfolders of `currentFolderURL`, sorted in natural order. Cached on load.
+    private(set) var siblingFolders: [URL] = []
+
+    /// True when the session has edits not yet written to disk. Flipped on by any change
+    /// to people/tabs/notes/summary/otherFiles, and cleared on load, clear, and save.
+    @ObservationIgnored private(set) var hasUnsavedChanges = false
+
+    private func markDirty() { hasUnsavedChanges = true }
+
+    /// Call after a successful save so navigation no longer warns about lost work.
+    func markSaved() { hasUnsavedChanges = false }
+
+    private func setCurrentFolder(_ url: URL?) {
+        currentFolderURL = url
+        siblingFolders = url.map { FolderLoader.siblingFolders(of: $0) } ?? []
+    }
+
+    private var currentFolderIndex: Int? {
+        guard let currentFolderURL else { return nil }
+        return siblingFolders.firstIndex {
+            $0.standardizedFileURL == currentFolderURL.standardizedFileURL
+        }
+    }
+
+    var previousFolderURL: URL? {
+        guard let i = currentFolderIndex, i > 0 else { return nil }
+        return siblingFolders[i - 1]
+    }
+
+    var nextFolderURL: URL? {
+        guard let i = currentFolderIndex, i < siblingFolders.count - 1 else { return nil }
+        return siblingFolders[i + 1]
+    }
+
+    /// A "12 / 80" style position within the sibling folders, or nil when not in a folder.
+    var folderPositionText: String? {
+        guard let i = currentFolderIndex else { return nil }
+        return "\(i + 1) / \(siblingFolders.count)"
+    }
 
     func addPerson() {
         people.append(Person())
@@ -178,6 +220,8 @@ final class SessionModel: @unchecked Sendable {
         summary = result.summary
         otherFiles = result.otherFiles
         selection = tabs.first.map { .record($0.id) } ?? .notes
+        setCurrentFolder(result.folderURL)
+        hasUnsavedChanges = false
     }
 
     func clearAll() {
@@ -187,6 +231,8 @@ final class SessionModel: @unchecked Sendable {
         summary = SessionSummary()
         otherFiles = OtherFilesCollection()
         selection = .summary
+        setCurrentFolder(nil)
+        hasUnsavedChanges = false
     }
 
     var totalImageCount: Int {
