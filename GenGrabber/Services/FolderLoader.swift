@@ -9,6 +9,9 @@ enum FolderLoader {
         var notes: [Note]
         var summary: SessionSummary
         var otherFiles: OtherFilesCollection
+        /// Maps each loaded image (by instance identity) back to the file it came from,
+        /// so the saver can detect and offer to remove old, differently-named originals.
+        var sourceURLByImage: [ObjectIdentifier: URL]
     }
 
     @MainActor
@@ -46,6 +49,9 @@ enum FolderLoader {
     static func load(from folderURL: URL) -> LoadResult {
         let fm = FileManager.default
         let files = (try? fm.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)) ?? []
+
+        // Tracks which file each loaded image came from (keyed by instance identity).
+        var sourceURLByImage: [ObjectIdentifier: URL] = [:]
 
         // Load note .txt files (excluding --parsed.txt and summary.json)
         var loadedNotes: [Note] = []
@@ -109,6 +115,7 @@ enum FolderLoader {
                 parsed.append(p)
             } else {
                 let image = NSImage(contentsOf: url)
+                if let image { sourceURLByImage[ObjectIdentifier(image)] = url }
                 otherFiles.files.append(OtherFile(url: url, filename: url.lastPathComponent, image: image))
             }
         }
@@ -178,6 +185,7 @@ enum FolderLoader {
 
                 for f in pageFiles {
                     let image = NSImage(contentsOf: f.url)
+                    if let image { sourceURLByImage[ObjectIdentifier(image)] = f.url }
                     switch f.suffix {
                     case .lafrance:
                         lafranceImage = image
@@ -231,7 +239,7 @@ enum FolderLoader {
             people = folderPeople
         }
 
-        return LoadResult(folderURL: folderURL, people: people, tabs: tabs, notes: loadedNotes, summary: summary, otherFiles: otherFiles)
+        return LoadResult(folderURL: folderURL, people: people, tabs: tabs, notes: loadedNotes, summary: summary, otherFiles: otherFiles, sourceURLByImage: sourceURLByImage)
     }
 
     // MARK: - Filename Parsing

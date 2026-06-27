@@ -20,6 +20,9 @@ final class SessionModel: @unchecked Sendable {
     private(set) var currentFolderURL: URL?
     /// Sibling subfolders of `currentFolderURL`, sorted in natural order. Cached on load.
     private(set) var siblingFolders: [URL] = []
+    /// Maps each loaded image (by instance identity) to the file it was read from.
+    /// Used by the saver to offer removal of old, differently-named originals.
+    private(set) var sourceURLByImage: [ObjectIdentifier: URL] = [:]
 
     /// True when the session has edits not yet written to disk. Flipped on by any change
     /// to people/tabs/notes/summary/otherFiles, and cleared on load, clear, and save.
@@ -219,6 +222,7 @@ final class SessionModel: @unchecked Sendable {
         notes = result.notes
         summary = result.summary
         otherFiles = result.otherFiles
+        sourceURLByImage = result.sourceURLByImage
         selection = tabs.first.map { .record($0.id) } ?? .notes
         setCurrentFolder(result.folderURL)
         hasUnsavedChanges = false
@@ -230,6 +234,7 @@ final class SessionModel: @unchecked Sendable {
         notes = [Note(title: "notes")]
         summary = SessionSummary()
         otherFiles = OtherFilesCollection()
+        sourceURLByImage = [:]
         selection = .summary
         setCurrentFolder(nil)
         hasUnsavedChanges = false
