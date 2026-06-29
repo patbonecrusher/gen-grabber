@@ -12,6 +12,8 @@ struct ContentView: View {
     @State private var showMissingSummaryWarning = false
     @State private var pendingFolderURL: URL?
     @State private var showNavConfirmation = false
+    @State private var savePlan: FileSaver.SavePlan?
+    @State private var trashOldFiles = true
 
     var body: some View {
         VStack(spacing: 0) {
@@ -134,11 +136,23 @@ struct ContentView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView(settings: aiSettings)
         }
+        .sheet(item: $savePlan) { plan in
+            SavePreviewView(
+                plan: plan,
+                trashOldFiles: $trashOldFiles,
+                onSave: {
+                    savePlan = nil
+                    applySave(plan)
+                },
+                onChangeFolder: { changeSaveFolder() },
+                onCancel: { savePlan = nil }
+            )
+        }
         .alert("Saved", isPresented: $showSaveConfirmation) {
             Button("OK") {}
         } message: {
             if let result = saveResult {
-                Text("Saved \(result.fileCount) files to \(result.folder.lastPathComponent)/")
+                Text(savedSummary(result))
             }
         }
         .alert("Unsaved Changes", isPresented: $showNavConfirmation) {
@@ -177,16 +191,53 @@ struct ContentView: View {
     }
 
     private func performSave() {
+        // Preview against the currently-open folder without prompting; only ask for a folder
+        // when none is open (a manual/empty session).
+        guard let folder = session.currentFolderURL ?? FileSaver.pickSaveFolder(session: session) else { return }
+        trashOldFiles = true
+        presentSave(for: folder)
+    }
+
+    /// Builds the plan for `folder` and either shows the preview or, when nothing would change,
+    /// marks the session clean and confirms (no empty preview).
+    private func presentSave(for folder: URL) {
+        let plan = FileSaver.makePlan(session: session, folder: folder)
+        guard plan.hasChanges else {
+            session.markSaved()
+            saveResult = FileSaver.SaveResult(createdCount: 0, updatedCount: 0, removedCount: 0, folder: folder)
+            savePlan = nil
+            showSaveConfirmation = true
+            return
+        }
+        savePlan = plan
+    }
+
+    /// Invoked from the preview's "Change Folder…" button — pick a different destination and
+    /// recompute the preview against it (the open sheet updates in place).
+    private func changeSaveFolder() {
+        guard let folder = FileSaver.pickSaveFolder(session: session) else { return }
+        presentSave(for: folder)
+    }
+
+    private func applySave(_ plan: FileSaver.SavePlan) {
         let progress = SaveProgress()
         saveProgress = progress
         Task {
-            if let result = await FileSaver.saveAll(session: session, progress: progress) {
-                saveResult = result
-                showSaveConfirmation = true
-                session.markSaved()
-            }
+            let result = FileSaver.apply(plan, trashOldFiles: trashOldFiles, progress: progress)
+            session.markSaved()
+            saveResult = result
             saveProgress = nil
+            showSaveConfirmation = true
         }
+    }
+
+    private func savedSummary(_ result: FileSaver.SaveResult) -> String {
+        var parts: [String] = []
+        if result.createdCount > 0 { parts.append("\(result.createdCount) created") }
+        if result.updatedCount > 0 { parts.append("\(result.updatedCount) updated") }
+        if result.removedCount > 0 { parts.append("\(result.removedCount) moved to Trash") }
+        let detail = parts.isEmpty ? "No changes" : parts.joined(separator: ", ")
+        return "\(detail) in \(result.folder.lastPathComponent)/"
     }
 
     private func requestNavigate(to url: URL) {
