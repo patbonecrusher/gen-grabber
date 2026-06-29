@@ -175,13 +175,18 @@ struct ContentView: View {
                 ZStack {
                     Color.black.opacity(0.3)
                     VStack(spacing: 12) {
-                        Text("Saving...")
+                        Text(progress.label)
                             .font(.headline)
-                        ProgressView(value: progress.fraction)
-                            .frame(width: 200)
-                        Text("\(progress.completed) / \(progress.total)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        if progress.total > 0 {
+                            ProgressView(value: progress.fraction)
+                                .frame(width: 200)
+                            Text("\(progress.completed) / \(progress.total)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
                     }
                     .padding(24)
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
@@ -195,28 +200,34 @@ struct ContentView: View {
         // when none is open (a manual/empty session).
         guard let folder = session.currentFolderURL ?? FileSaver.pickSaveFolder(session: session) else { return }
         trashOldFiles = true
-        presentSave(for: folder)
+        buildPlan(for: folder)
     }
 
-    /// Builds the plan for `folder` and either shows the preview or, when nothing would change,
-    /// marks the session clean and confirms (no empty preview).
-    private func presentSave(for folder: URL) {
-        let plan = FileSaver.makePlan(session: session, folder: folder)
-        guard plan.hasChanges else {
-            session.markSaved()
-            saveResult = FileSaver.SaveResult(createdCount: 0, updatedCount: 0, removedCount: 0, folder: folder)
-            savePlan = nil
-            showSaveConfirmation = true
-            return
+    /// Computes the save plan (showing a progress bar, since encoding images can be slow), then
+    /// shows the preview — or, when nothing would change, marks the session clean and confirms.
+    private func buildPlan(for folder: URL) {
+        let progress = SaveProgress()
+        progress.label = "Analyzing changes…"
+        saveProgress = progress
+        Task {
+            let plan = await FileSaver.makePlan(session: session, folder: folder, progress: progress)
+            saveProgress = nil
+            guard plan.hasChanges else {
+                session.markSaved()
+                saveResult = FileSaver.SaveResult(createdCount: 0, updatedCount: 0, removedCount: 0, folder: folder)
+                savePlan = nil
+                showSaveConfirmation = true
+                return
+            }
+            savePlan = plan
         }
-        savePlan = plan
     }
 
     /// Invoked from the preview's "Change Folder…" button — pick a different destination and
     /// recompute the preview against it (the open sheet updates in place).
     private func changeSaveFolder() {
         guard let folder = FileSaver.pickSaveFolder(session: session) else { return }
-        presentSave(for: folder)
+        buildPlan(for: folder)
     }
 
     private func applySave(_ plan: FileSaver.SavePlan) {

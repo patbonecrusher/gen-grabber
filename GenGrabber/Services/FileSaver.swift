@@ -4,6 +4,7 @@ import ImageIO
 
 @Observable
 final class SaveProgress {
+    var label: String = "Saving…"
     var total: Int = 0
     var completed: Int = 0
     var fraction: Double { total > 0 ? Double(completed) / Double(total) : 0 }
@@ -44,20 +45,27 @@ enum FileSaver {
     /// created/updated/unchanged by comparing the bytes against what is already on disk, and
     /// determines which old, differently-named originals would be superseded. Writes nothing.
     @MainActor
-    static func makePlan(session: SessionModel, folder: URL) -> SavePlan {
+    static func makePlan(session: SessionModel, folder: URL, progress: SaveProgress? = nil) async -> SavePlan {
         var writes: [PlannedWrite] = []
         let sources = session.sourceURLByImage
         var removable: Set<URL> = []
 
-        func planImage(_ image: NSImage, named filename: String) {
+        progress?.completed = 0
+        progress?.total = plannedOutputCount(for: session)
+
+        // Encoding images is the slow part; yield after each so the progress bar updates.
+        func planImage(_ image: NSImage, named filename: String) async {
+            defer { progress?.completed += 1 }
             guard let data = pngData(for: image) else { return }
             let url = folder.appendingPathComponent(filename)
             writes.append(PlannedWrite(url: url, data: data, kind: changeKind(of: data, comparedToFileAt: url)))
             collectRemovable(image: image, newFilename: filename, newData: data,
                              folderURL: folder, sources: sources, into: &removable)
+            await Task.yield()
         }
 
         func planText(_ content: String, named filename: String) {
+            defer { progress?.completed += 1 }
             let url = folder.appendingPathComponent(filename)
             let data = Data(content.utf8)
             writes.append(PlannedWrite(url: url, data: data, kind: changeKind(of: data, comparedToFileAt: url)))
@@ -68,7 +76,7 @@ enum FileSaver {
             let filenames = FilenameBuilder.filenames(for: tab, people: session.people, closeupCounts: closeupCounts)
 
             if let lafranceFilename = filenames.lafrance, let image = tab.lafranceImage {
-                planImage(image, named: lafranceFilename)
+                await planImage(image, named: lafranceFilename)
                 if !tab.lafranceParsedText.isEmpty {
                     let parsedFilename = lafranceFilename.replacingOccurrences(of: ".png", with: "--parsed.txt")
                     planText(tab.lafranceParsedText, named: parsedFilename)
@@ -80,14 +88,14 @@ enum FileSaver {
                 let pageFilenames = filenames.pages[pageIndex]
 
                 if let image = page.recordImage {
-                    planImage(image, named: pageFilenames.record)
+                    await planImage(image, named: pageFilenames.record)
                 }
                 if !page.parsedText.isEmpty {
                     planText(page.parsedText, named: pageFilenames.parsed)
                 }
                 for (closeupIndex, closeupImage) in page.closeupImages.enumerated() {
                     if let image = closeupImage, closeupIndex < pageFilenames.closeups.count {
-                        planImage(image, named: pageFilenames.closeups[closeupIndex])
+                        await planImage(image, named: pageFilenames.closeups[closeupIndex])
                     }
                 }
             }
@@ -96,7 +104,7 @@ enum FileSaver {
         // Other files (kept under their original names)
         for otherFile in session.otherFiles.files {
             if let image = otherFile.image {
-                planImage(image, named: otherFile.filename)
+                await planImage(image, named: otherFile.filename)
             }
         }
 
@@ -115,12 +123,31 @@ enum FileSaver {
                 let url = folder.appendingPathComponent("summary.json")
                 writes.append(PlannedWrite(url: url, data: jsonData, kind: changeKind(of: jsonData, comparedToFileAt: url)))
             }
+            progress?.completed += 1
         }
 
         let removableSorted = removable.sorted {
             $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending
         }
         return SavePlan(folder: folder, writes: writes, removableOldFiles: removableSorted)
+    }
+
+    /// Number of outputs makePlan will consider — drives the progress total.
+    private static func plannedOutputCount(for session: SessionModel) -> Int {
+        var total = 0
+        for tab in session.tabs {
+            if tab.lafranceImage != nil { total += 1 }
+            if tab.lafranceImage != nil && !tab.lafranceParsedText.isEmpty { total += 1 }
+            for page in tab.pages {
+                if page.recordImage != nil { total += 1 }
+                if !page.parsedText.isEmpty { total += 1 }
+                total += page.closeupImages.compactMap { $0 }.count
+            }
+        }
+        total += session.otherFiles.files.count
+        total += session.notes.filter { !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count
+        if !session.summary.records.isEmpty || !session.summary.markedPeople.isEmpty { total += 1 }
+        return total
     }
 
     /// Classifies a planned write against the file currently on disk.
