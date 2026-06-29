@@ -29,11 +29,12 @@ struct TabBarView: View {
                 onClose: {}
             )
 
-            // Summary tab
+            // Summary tab — tinted red when records exist but no summary was generated.
             TabButton(
                 label: "Summary",
                 isSelected: session.selection == .summary,
                 isCloseable: false,
+                tint: needsSummary ? .red : nil,
                 onSelect: { session.selection = .summary },
                 onClose: {}
             )
@@ -83,12 +84,18 @@ struct TabBarView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
     }
+
+    /// True when there are records to summarize but no AI summary has been generated yet.
+    private var needsSummary: Bool {
+        session.summary.records.isEmpty && !session.tabs.isEmpty
+    }
 }
 
 private struct TabButton: View {
     let label: String
     let isSelected: Bool
     var isCloseable: Bool = true
+    var tint: Color? = nil
     let onSelect: () -> Void
     let onClose: () -> Void
 
@@ -97,6 +104,7 @@ private struct TabButton: View {
             Text(label)
                 .font(.caption)
                 .lineLimit(1)
+                .foregroundStyle(tint ?? .primary)
 
             if isCloseable {
                 Button {
@@ -111,8 +119,15 @@ private struct TabButton: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
+        .background(backgroundColor)
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         .onTapGesture { onSelect() }
+    }
+
+    private var backgroundColor: Color {
+        if let tint {
+            return tint.opacity(isSelected ? 0.28 : 0.12)
+        }
+        return isSelected ? Color.accentColor.opacity(0.15) : Color.clear
     }
 }
