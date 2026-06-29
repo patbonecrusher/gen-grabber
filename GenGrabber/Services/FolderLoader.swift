@@ -380,12 +380,13 @@ enum FolderLoader {
 
         let remainder = parts[2] // "names-recordID"
 
-        // Find the recordID: look for last segment starting with "d" followed by digit then "p_"
-        // Split remainder into segments and find where recordID starts
+        // Find where the recordID starts: the first segment that isn't a plain lowercase name
+        // (i.e. contains a digit or an uppercase letter). Handles d1p_… as well as FamilySearch
+        // ARKs (e.g. 3QSQ-G993-F93K-J), BANQ ids, and other non-d1p identifiers.
         let segments = remainder.split(separator: "-").map(String.init)
         var recordIDStart: Int?
         for i in segments.indices {
-            if segments[i].hasPrefix("d") && segments[i].contains("p_") {
+            if segments[i].contains(where: { $0.isNumber || $0.isUppercase }) {
                 recordIDStart = i
                 break
             }

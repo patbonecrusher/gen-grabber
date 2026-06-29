@@ -179,4 +179,20 @@ struct NameSplittingTests {
         #expect(!result.people.contains { $0.firstName == "dit" })
         #expect(!result.people.contains { $0.lastName == "Lapierre" })
     }
+
+    @Test("Legacy record with a non-d1p ID (FamilySearch ARK) parses, not dumped to Other")
+    func nonD1pRecordID() throws {
+        let result = try loadFolder(
+            named: "0500-0501--langevin-michel__fontaine-victoire",
+            files: ["1766-w-langevin-michel-fontaine-victoire-3QSQ-G993-F93K-J.jpg"]
+        )
+
+        #expect(result.otherFiles.files.isEmpty)   // recognized, not "Other"
+        #expect(result.tabs.count == 1)
+        let tab = try #require(result.tabs.first)
+        #expect(tab.recordType == .wedding)
+        #expect(tab.pages.first?.recordID == "3QSQ-G993-F93K-J")
+        #expect(result.people.contains { $0.lastName == "Langevin" && $0.firstName == "Michel" })
+        #expect(result.people.contains { $0.lastName == "Fontaine" && $0.firstName == "Victoire" })
+    }
 }
