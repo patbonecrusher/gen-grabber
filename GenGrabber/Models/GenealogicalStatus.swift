@@ -35,7 +35,7 @@ enum GenealogicalStatus: String, CaseIterable, Codable, Identifiable, Sendable {
 }
 
 /// A name-keyed set of statuses + origin for one person, persisted in summary.json.
-struct PersonMark: Codable, Identifiable, Sendable {
+struct PersonMark: Codable, Identifiable, Sendable, Equatable {
     let id: UUID
     var lastName: String
     var firstName: String

@@ -9,11 +9,13 @@ enum TabSelection: Equatable {
 
 @Observable
 final class SessionModel: @unchecked Sendable {
-    var people: [Person] = [] { didSet { markDirty() } }
+    // Equatable-gated so that SwiftUI TextFields writing back an identical value (e.g. when a
+    // field resigns focus as the Save panel opens) don't spuriously mark the session dirty.
+    var people: [Person] = [] { didSet { if people != oldValue { markDirty() } } }
     var tabs: [RecordTab] = [] { didSet { markDirty() } }
-    var notes: [Note] = [Note(title: "notes")] { didSet { markDirty() } }
+    var notes: [Note] = [Note(title: "notes")] { didSet { if notes != oldValue { markDirty() } } }
     var selection: TabSelection = .summary
-    var summary: SessionSummary = SessionSummary() { didSet { markDirty() } }
+    var summary: SessionSummary = SessionSummary() { didSet { if summary != oldValue { markDirty() } } }
     var otherFiles = OtherFilesCollection() { didSet { markDirty() } }
 
     /// The folder the current session was loaded from (nil if loaded manually / empty).

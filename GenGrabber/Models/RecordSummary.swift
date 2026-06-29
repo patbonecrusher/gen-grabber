@@ -1,6 +1,6 @@
 import Foundation
 
-struct RecordPersonEntry: Codable, Identifiable, Sendable {
+struct RecordPersonEntry: Codable, Identifiable, Sendable, Equatable {
     let id: UUID
     var name: String
     var role: String
@@ -28,7 +28,7 @@ struct RecordPersonEntry: Codable, Identifiable, Sendable {
     }
 }
 
-struct RecordSummary: Codable, Identifiable, Sendable {
+struct RecordSummary: Codable, Identifiable, Sendable, Equatable {
     let id: UUID
     var recordType: String
     var date: String
@@ -56,7 +56,7 @@ struct RecordSummary: Codable, Identifiable, Sendable {
     }
 }
 
-struct SessionSummary: Codable, Sendable {
+struct SessionSummary: Codable, Sendable, Equatable {
     var records: [RecordSummary]
     /// Manually-applied genealogical statuses, keyed by person name. Optional in the JSON so
     /// older summary.json files (which lack this key) still decode.

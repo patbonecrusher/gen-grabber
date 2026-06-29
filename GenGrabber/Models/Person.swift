@@ -5,7 +5,7 @@ enum Gender: String, CaseIterable, Sendable {
     case female = "F"
 }
 
-struct Person: Identifiable, Sendable {
+struct Person: Identifiable, Sendable, Equatable {
     let id: UUID
     var gender: Gender
     var lastName: String

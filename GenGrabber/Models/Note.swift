@@ -1,6 +1,6 @@
 import Foundation
 
-struct Note: Identifiable, Sendable {
+struct Note: Identifiable, Sendable, Equatable {
     let id: UUID
     var title: String
     var content: String
