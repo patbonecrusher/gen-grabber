@@ -105,13 +105,17 @@ enum FolderLoader {
             }
         }
 
+        // The couple encoded in the folder name lets us split legacy wedding names and unify
+        // dit-alias surnames (a record under "meunier" or "lapierre" → the one husband).
+        let couple = coupleMembers(fromFolder: folderURL.lastPathComponent)
+
         // Group image files by record base (year-type-names)
         let imageFiles = files.filter { isImageFile($0) }
 
         var parsed: [ParsedFile] = []
         var otherFiles = OtherFilesCollection()
         for url in imageFiles {
-            if let p = parseNewFormat(url) ?? parseLegacyFormat(url) {
+            if let p = parseNewFormat(url) ?? parseLegacyFormat(url, couple: couple) {
                 parsed.append(p)
             } else {
                 let image = NSImage(contentsOf: url)
@@ -138,27 +142,20 @@ enum FolderLoader {
 
             switch recordType {
             case .wedding:
-                let groom = getOrCreatePerson(
-                    lastName: first.names[safe: 0] ?? "",
-                    firstName: first.names[safe: 1] ?? "",
-                    gender: .male,
-                    knownGender: true,
-                    registry: &peopleByName
+                let groom = makePerson(
+                    last: first.names[safe: 0] ?? "", first: first.names[safe: 1] ?? "",
+                    defaultGender: .male, knownGender: true, couple: couple, registry: &peopleByName
                 )
-                let bride = getOrCreatePerson(
-                    lastName: first.names[safe: 2] ?? "",
-                    firstName: first.names[safe: 3] ?? "",
-                    gender: .female,
-                    knownGender: true,
-                    registry: &peopleByName
+                let bride = makePerson(
+                    last: first.names[safe: 2] ?? "", first: first.names[safe: 3] ?? "",
+                    defaultGender: .female, knownGender: true, couple: couple, registry: &peopleByName
                 )
                 personIDs = [groom.id, bride.id]
             case .birth, .sepulture, .obituary, .thanks:
-                let person = getOrCreatePerson(
-                    lastName: first.names[safe: 0] ?? "",
-                    firstName: first.names[safe: 1] ?? "",
-                    gender: .male, // Default, will be corrected if seen in a wedding
-                    registry: &peopleByName
+                let person = makePerson(
+                    last: first.names[safe: 0] ?? "", first: first.names[safe: 1] ?? "",
+                    defaultGender: .male, // Default, corrected if seen in a wedding or matched to the couple
+                    knownGender: false, couple: couple, registry: &peopleByName
                 )
                 personIDs = [person.id]
             case .misc:
@@ -239,6 +236,16 @@ enum FolderLoader {
             people = folderPeople
         }
 
+        // When summary.json is present it is authoritative for the last/first split (its
+        // markedPeople are user-authored, its record persons store "LASTNAME, Firstname"),
+        // so correct any ambiguous "dit" splits the filename heuristic may have guessed.
+        let splitMap = buildNameSplitMap(from: summary)
+        if !splitMap.isEmpty {
+            people = people.map { applyNameSplit($0, using: splitMap) }
+        }
+        // Realign any marks saved with an older split so they still attach to their person.
+        summary.markedPeople = reconcileMarks(summary.markedPeople, to: people)
+
         return LoadResult(folderURL: folderURL, people: people, tabs: tabs, notes: loadedNotes, summary: summary, otherFiles: otherFiles, sourceURLByImage: sourceURLByImage)
     }
 
@@ -281,14 +288,12 @@ enum FolderLoader {
         if recordType == .wedding, namesPart.contains("__") {
             let personParts = namesPart.components(separatedBy: "__")
             guard personParts.count == 2 else { return nil }
-            let groomSegments = personParts[0].split(separator: "-", maxSplits: 1).map(String.init)
-            let brideSegments = personParts[1].split(separator: "-", maxSplits: 1).map(String.init)
-            names = [
-                groomSegments[safe: 0] ?? "", groomSegments[safe: 1] ?? "",
-                brideSegments[safe: 0] ?? "", brideSegments[safe: 1] ?? "",
-            ]
+            let groom = splitPersonName(personParts[0])
+            let bride = splitPersonName(personParts[1])
+            names = [groom.last, groom.first, bride.last, bride.first]
         } else {
-            names = namesPart.split(separator: "-", maxSplits: 1).map(String.init)
+            let split = splitPersonName(namesPart)
+            names = split.first.isEmpty ? [split.last] : [split.last, split.first]
         }
 
         // Remaining sections are source/recordID and suffix
@@ -348,7 +353,7 @@ enum FolderLoader {
 
     // MARK: - Legacy Format Parser (old LaFrance regex-based)
 
-    private static func parseLegacyFormat(_ url: URL) -> ParsedFile? {
+    private static func parseLegacyFormat(_ url: URL, couple: [CoupleMember]) -> ParsedFile? {
         let filename = url.deletingPathExtension().lastPathComponent
 
         // Determine suffix by checking what's at the end
@@ -396,7 +401,7 @@ enum FolderLoader {
             return nil
         }
 
-        let names = parseLegacyNames(namesPart, recordType: recordType)
+        let names = parseLegacyNames(namesPart, recordType: recordType, couple: couple)
 
         return ParsedFile(
             url: url,
@@ -409,20 +414,23 @@ enum FolderLoader {
         )
     }
 
-    private static func parseLegacyNames(_ namesPart: String, recordType: RecordType) -> [String] {
+    private static func parseLegacyNames(_ namesPart: String, recordType: RecordType, couple: [CoupleMember]) -> [String] {
         let segments = namesPart.split(separator: "-").map(String.init)
 
         switch recordType {
         case .birth, .sepulture, .obituary, .thanks:
             guard segments.count >= 2 else { return segments }
-            let lastName = segments[0]
-            let firstName = segments[1...].joined(separator: "-")
-            return [lastName, firstName]
+            let (last, first) = splitNameSegments(segments)
+            return [last.joined(separator: "-"), first.joined(separator: "-")]
 
         case .misc:
             return segments
 
         case .wedding:
+            // Prefer the folder-name couple to find the groom/bride boundary — it handles
+            // multi-word "dit" surnames the positional heuristic below cannot.
+            if let names = splitLegacyWedding(segments, couple: couple) { return names }
+
             // Need to split into groom and bride names
             // Pattern: groomLast-groomFirst[-groomFirst...]-brideLast-brideFirst[-brideFirst...]
             // Since last names are single segments, we try splitting at each position
@@ -482,18 +490,18 @@ enum FolderLoader {
         let personParts = namesPart.components(separatedBy: "__")
         guard personParts.count == 2 else { return [] }
 
-        let husbandSegments = personParts[0].split(separator: "-", maxSplits: 1).map(String.init)
-        let wifeSegments = personParts[1].split(separator: "-", maxSplits: 1).map(String.init)
+        let husbandName = splitPersonName(personParts[0])
+        let wifeName = splitPersonName(personParts[1])
 
         let husband = Person(
             gender: .male,
-            lastName: capitalize(husbandSegments[safe: 0] ?? ""),
-            firstName: capitalize(husbandSegments[safe: 1] ?? "")
+            lastName: capitalize(husbandName.last),
+            firstName: capitalize(husbandName.first)
         )
         let wife = Person(
             gender: .female,
-            lastName: capitalize(wifeSegments[safe: 0] ?? ""),
-            firstName: capitalize(wifeSegments[safe: 1] ?? "")
+            lastName: capitalize(wifeName.last),
+            firstName: capitalize(wifeName.first)
         )
 
         return [husband, wife]
@@ -504,6 +512,96 @@ enum FolderLoader {
     private static func isImageFile(_ url: URL) -> Bool {
         let ext = url.pathExtension.lowercased()
         return ext == "png" || ext == "jpg" || ext == "jpeg"
+    }
+
+    // MARK: - Folder-name couple unification (dit aliases)
+
+    /// One spouse from the folder name, with the set of surname forms that should map to them
+    /// (the base surname plus each "dit" alias).
+    private struct CoupleMember {
+        let gender: Gender
+        let canonicalLast: String   // normalized, e.g. "jared-dit-beauregard"
+        let firstNorm: String       // normalized, e.g. "pierre"
+        let variants: Set<String>   // {jared-dit-beauregard, jared, beauregard}
+    }
+
+    /// Parses "…--husband__wife" from the folder name into couple members for unification.
+    private static func coupleMembers(fromFolder name: String) -> [CoupleMember] {
+        let sections = name.components(separatedBy: "--")
+        guard sections.count >= 2 else { return [] }
+        let namesPart = sections.dropFirst().joined(separator: "--")
+        let parts = namesPart.components(separatedBy: "__")
+        guard parts.count == 2 else { return [] }
+        return [coupleMember(from: parts[0], gender: .male),
+                coupleMember(from: parts[1], gender: .female)].compactMap { $0 }
+    }
+
+    private static func coupleMember(from raw: String, gender: Gender) -> CoupleMember? {
+        let (last, first) = splitPersonName(raw)
+        guard !last.isEmpty else { return nil }
+        var variants: Set<String> = [last]
+        // Each run of segments between "dit" markers is an alternate surname.
+        var current: [String] = []
+        for seg in last.split(separator: "-").map(String.init) {
+            if ditMarkers.contains(seg.lowercased()) {
+                if !current.isEmpty { variants.insert(current.joined(separator: "-")) }
+                current = []
+            } else {
+                current.append(seg)
+            }
+        }
+        if !current.isEmpty { variants.insert(current.joined(separator: "-")) }
+        return CoupleMember(gender: gender, canonicalLast: last, firstNorm: first, variants: variants)
+    }
+
+    /// Splits a legacy wedding name ("groom…bride…", no separator) using the folder couple to find
+    /// the boundary: the longest "<variant>-<firstname>" prefix that matches a spouse is the first
+    /// person; the remainder is the other. Returns nil when no couple member matches.
+    private static func splitLegacyWedding(_ segments: [String], couple: [CoupleMember]) -> [String]? {
+        guard !couple.isEmpty else { return nil }
+        let namesPart = segments.joined(separator: "-")
+
+        var bestCandidate: String?
+        var bestMember: CoupleMember?
+        for member in couple {
+            for variant in member.variants {
+                let candidate = "\(variant)-\(member.firstNorm)"
+                guard namesPart == candidate || namesPart.hasPrefix(candidate + "-") else { continue }
+                if bestCandidate == nil || candidate.count > bestCandidate!.count {
+                    bestCandidate = candidate
+                    bestMember = member
+                }
+            }
+        }
+        guard let candidate = bestCandidate, let member = bestMember else { return nil }
+
+        let remainder = namesPart == candidate ? "" : String(namesPart.dropFirst(candidate.count + 1))
+        let spouse2 = splitPersonName(remainder)
+        return [member.canonicalLast, member.firstNorm, spouse2.last, spouse2.first]
+    }
+
+    /// Returns the couple member a record name belongs to (matching first name + a surname variant).
+    private static func resolve(last: String, first: String, in couple: [CoupleMember]) -> CoupleMember? {
+        let l = FilenameBuilder.normalize(last)
+        let f = FilenameBuilder.normalize(first)
+        return couple.first { $0.firstNorm == f && $0.variants.contains(l) }
+    }
+
+    /// Creates/fetches a Person, first folding dit-alias surnames into the canonical couple member.
+    private static func makePerson(
+        last: String, first: String, defaultGender: Gender, knownGender: Bool,
+        couple: [CoupleMember], registry: inout [String: Person]
+    ) -> Person {
+        if let member = resolve(last: last, first: first, in: couple) {
+            return getOrCreatePerson(
+                lastName: member.canonicalLast, firstName: member.firstNorm,
+                gender: member.gender, knownGender: true, registry: &registry
+            )
+        }
+        return getOrCreatePerson(
+            lastName: last, firstName: first, gender: defaultGender,
+            knownGender: knownGender, registry: &registry
+        )
     }
 
     private static func getOrCreatePerson(
@@ -534,7 +632,119 @@ enum FolderLoader {
 
     private static func capitalize(_ name: String) -> String {
         name.split(separator: "-")
-            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+            .map { seg -> String in
+                let s = String(seg)
+                // Keep French-Canadian "dit" markers lowercase (e.g. "Hus dit Cournoyer").
+                if ditMarkers.contains(s.lowercased()) { return s.lowercased() }
+                return s.prefix(1).uppercased() + s.dropFirst()
+            }
             .joined(separator: " ")
+    }
+
+    // MARK: - Person name splitting ("dit" names)
+
+    // In French-Canadian names, "<surname> dit <alias> <firstname>" keeps the "dit <alias>"
+    // with the surname. Aliases are normally one token, or two when prefixed with a Saint form
+    // (e.g. "dit St-Germain").
+    private static let ditMarkers: Set<String> = ["dit", "dite", "ditte", "dits", "dites"]
+    private static let saintPrefixes: Set<String> = ["st", "ste", "saint", "sainte"]
+
+    /// Splits a hyphen-joined person name into (lastName, firstName) as hyphen-joined lowercase
+    /// parts, keeping any "dit <alias>" with the surname.
+    static func splitPersonName(_ namesPart: String) -> (last: String, first: String) {
+        let (last, first) = splitNameSegments(namesPart.split(separator: "-").map(String.init))
+        return (last.joined(separator: "-"), first.joined(separator: "-"))
+    }
+
+    private static func splitNameSegments(_ segments: [String]) -> (last: [String], first: [String]) {
+        guard !segments.isEmpty else { return ([], []) }
+        // Use the LAST "dit" marker so chained aliases ("dit X dit Y") stay with the surname.
+        if let ditIndex = segments.lastIndex(where: { ditMarkers.contains($0.lowercased()) }),
+           ditIndex + 1 < segments.count {
+            let aliasStart = ditIndex + 1
+            var aliasEnd = aliasStart
+            // A Saint-prefixed alias spans two tokens (e.g. "st-germain").
+            if saintPrefixes.contains(segments[aliasStart].lowercased()), aliasStart + 1 < segments.count {
+                aliasEnd = aliasStart + 1
+            }
+            let last = Array(segments[0...aliasEnd])
+            let first = aliasEnd + 1 < segments.count ? Array(segments[(aliasEnd + 1)...]) : []
+            return (last, first)
+        }
+        // No "dit": first token is the surname, the rest the given name.
+        return ([segments[0]], Array(segments.dropFirst()))
+    }
+
+    // MARK: - Name split overrides from summary.json
+
+    /// Builds an authoritative map from a person's joined name (e.g. "hus-dit-cournoyer-charles")
+    /// to its (last, first) split, using summary.json. markedPeople (user-authored) win over
+    /// AI-extracted record persons.
+    private static func buildNameSplitMap(from summary: SessionSummary) -> [String: (last: String, first: String)] {
+        var map: [String: (last: String, first: String)] = [:]
+        for record in summary.records {
+            for person in record.persons {
+                guard let split = splitDisplayName(person.name), !startsWithDit(split.first) else { continue }
+                map[nameKey(last: split.last, first: split.first)] =
+                    (FilenameBuilder.normalize(split.last), FilenameBuilder.normalize(split.first))
+            }
+        }
+        for mark in summary.markedPeople where !mark.lastName.isEmpty || !mark.firstName.isEmpty {
+            // Skip splits that are obviously wrong (a first name never begins with "dit") — these
+            // are usually stale marks saved before dit-aware parsing; the heuristic is better.
+            guard !startsWithDit(mark.firstName) else { continue }
+            map[nameKey(last: mark.lastName, first: mark.firstName)] =
+                (FilenameBuilder.normalize(mark.lastName), FilenameBuilder.normalize(mark.firstName))
+        }
+        return map
+    }
+
+    /// True when a name's first word is a "dit" marker — a sign the surname/first split is wrong.
+    private static func startsWithDit(_ name: String) -> Bool {
+        guard let firstWord = name.split(whereSeparator: { $0 == " " || $0 == "-" }).first else { return false }
+        return ditMarkers.contains(firstWord.lowercased())
+    }
+
+    /// Realigns stored marks to the people's (corrected) last/first split, matched by joined name,
+    /// so a mark saved with an old split still attaches to its person.
+    private static func reconcileMarks(_ marks: [PersonMark], to people: [Person]) -> [PersonMark] {
+        var splitByKey: [String: (last: String, first: String)] = [:]
+        for person in people {
+            splitByKey[nameKey(last: person.lastName, first: person.firstName)] = (person.lastName, person.firstName)
+        }
+        return marks.map { mark in
+            guard let split = splitByKey[nameKey(last: mark.lastName, first: mark.firstName)] else { return mark }
+            var updated = mark
+            updated.lastName = split.last
+            updated.firstName = split.first
+            return updated
+        }
+    }
+
+    /// The joined-name key used to match a person against the summary map.
+    private static func nameKey(last: String, first: String) -> String {
+        let l = FilenameBuilder.normalize(last)
+        let f = FilenameBuilder.normalize(first)
+        return f.isEmpty ? l : "\(l)-\(f)"
+    }
+
+    /// Splits a "LASTNAME, Firstname" display name into (last, first), or nil if there's no comma.
+    private static func splitDisplayName(_ name: String) -> (last: String, first: String)? {
+        let parts = name.components(separatedBy: ",")
+        guard parts.count >= 2 else { return nil }
+        let last = parts[0].trimmingCharacters(in: .whitespaces)
+        let first = parts[1...].joined(separator: ",").trimmingCharacters(in: .whitespaces)
+        guard !last.isEmpty else { return nil }
+        return (last, first)
+    }
+
+    /// Re-splits a person's name using the summary map when the joined name matches; otherwise
+    /// leaves the heuristic split untouched.
+    private static func applyNameSplit(_ person: Person, using map: [String: (last: String, first: String)]) -> Person {
+        guard let split = map[nameKey(last: person.lastName, first: person.firstName)] else { return person }
+        var updated = person
+        updated.lastName = capitalize(split.last)
+        updated.firstName = capitalize(split.first)
+        return updated
     }
 }
