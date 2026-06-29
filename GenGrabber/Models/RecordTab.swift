@@ -8,6 +8,9 @@ struct RecordTab: Identifiable, Sendable {
     let personIDs: [UUID]
     var year: String
     var lafranceImage: NSImage?
+    /// The recordID the LaFrance image belongs to, so it keeps its own id in the filename even
+    /// when the tab spans several records (e.g. a d1p record plus a FamilySearch ARK one).
+    var lafranceRecordID: String?
     var pages: [PageGroup]
     var customLabel: String
     var lafranceParsedText: String

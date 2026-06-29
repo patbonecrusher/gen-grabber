@@ -168,8 +168,9 @@ enum FolderLoader {
                 pagesByRecordID[f.recordID, default: []].append(f)
             }
 
-            // Find the lafrance image (from first record ID)
+            // Find the lafrance image and remember which record it came from.
             var lafranceImage: NSImage?
+            var lafranceRecordID: String?
             var pages: [PageGroup] = []
 
             let sortedRecordIDs = pagesByRecordID.keys.sorted()
@@ -186,6 +187,7 @@ enum FolderLoader {
                     switch f.suffix {
                     case .lafrance:
                         lafranceImage = image
+                        lafranceRecordID = recordID
                     case .record:
                         recordImage = image
                     case .closeup:
@@ -223,6 +225,7 @@ enum FolderLoader {
 
             var tab = RecordTab(recordType: recordType, personIDs: personIDs, year: first.year, isUnsure: first.isUnsure)
             tab.lafranceImage = lafranceImage
+            tab.lafranceRecordID = lafranceRecordID
             tab.pages = pages
 
             tabs.append(tab)

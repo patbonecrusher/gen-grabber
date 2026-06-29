@@ -19,11 +19,13 @@ enum FilenameBuilder {
     ) -> RecordFilenames {
         var base = buildBase(for: tab, people: people)
         if tab.isUnsure { base += "--unsure" }
-        let firstRecordID = tab.pages.first?.recordID ?? ""
 
         let lafrance: String?
         if tab.lafranceImage != nil {
-            let recordIDPart = firstRecordID.isEmpty ? "" : "--\(firstRecordID)"
+            // Use the record the LaFrance came from, not just the first page, so it keeps its id
+            // when the tab spans multiple records.
+            let lafranceRecordID = tab.lafranceRecordID ?? tab.pages.first?.recordID ?? ""
+            let recordIDPart = lafranceRecordID.isEmpty ? "" : "--\(lafranceRecordID)"
             lafrance = "\(base)\(recordIDPart)--lafrance.png"
         } else {
             lafrance = nil

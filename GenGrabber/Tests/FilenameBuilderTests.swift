@@ -37,6 +37,21 @@ struct FilenameBuilderTests {
         #expect(filenames.pages[1].closeups == ["1787--w--languirand-pierre__levasseur-marie-anne--d1p_03871070--closeup.png"])
     }
 
+    @Test("LaFrance keeps its own record ID when the tab spans multiple records")
+    func lafranceKeepsItsRecordID() {
+        let groom = Person(gender: .male, lastName: "Langevin", firstName: "Michel")
+        let bride = Person(gender: .female, lastName: "Fontaine", firstName: "Victoire")
+        var tab = RecordTab(recordType: .wedding, personIDs: [groom.id, bride.id], year: "1766", lafranceImage: dummyImage)
+        // The LaFrance came from the d1p record, but a FamilySearch ARK page sorts first.
+        tab.lafranceRecordID = "d1p_11070436"
+        tab.pages[0].recordID = "3QSQ-G993-F93K-J"
+        tab.pages.append(PageGroup(recordID: "d1p_11070436"))
+
+        let filenames = FilenameBuilder.filenames(for: tab, people: [groom, bride])
+
+        #expect(filenames.lafrance == "1766--w--langevin-michel__fontaine-victoire--d1p_11070436--lafrance.png")
+    }
+
     @Test("Birth filenames with LaFrance ID")
     func birth() {
         let person = Person(gender: .male, lastName: "Girard", firstName: "Joseph")
