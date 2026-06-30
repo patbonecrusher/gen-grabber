@@ -25,6 +25,8 @@ final class SessionModel: @unchecked Sendable {
     /// Maps each loaded image (by instance identity) to the file it was read from.
     /// Used by the saver to offer removal of old, differently-named originals.
     private(set) var sourceURLByImage: [ObjectIdentifier: URL] = [:]
+    /// True when the loaded folder has records using the old single-dash naming.
+    private(set) var hasLegacyFiles = false
 
     /// True when the session has edits not yet written to disk. Flipped on by any change
     /// to people/tabs/notes/summary/otherFiles, and cleared on load, clear, and save.
@@ -281,6 +283,7 @@ final class SessionModel: @unchecked Sendable {
         summary = result.summary
         otherFiles = result.otherFiles
         sourceURLByImage = result.sourceURLByImage
+        hasLegacyFiles = result.hasLegacyFiles
         selection = tabs.first.map { .record($0.id) } ?? .notes
         setCurrentFolder(result.folderURL)
         hasUnsavedChanges = false
@@ -293,6 +296,7 @@ final class SessionModel: @unchecked Sendable {
         summary = SessionSummary()
         otherFiles = OtherFilesCollection()
         sourceURLByImage = [:]
+        hasLegacyFiles = false
         selection = .summary
         setCurrentFolder(nil)
         hasUnsavedChanges = false

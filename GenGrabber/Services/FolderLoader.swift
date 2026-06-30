@@ -12,6 +12,8 @@ enum FolderLoader {
         /// Maps each loaded image (by instance identity) back to the file it came from,
         /// so the saver can detect and offer to remove old, differently-named originals.
         var sourceURLByImage: [ObjectIdentifier: URL]
+        /// True when any record used the old single-dash naming (vs the new --/__ format).
+        var hasLegacyFiles: Bool
     }
 
     @MainActor
@@ -114,9 +116,13 @@ enum FolderLoader {
 
         var parsed: [ParsedFile] = []
         var otherFiles = OtherFilesCollection()
+        var hasLegacyFiles = false
         for url in imageFiles {
-            if let p = parseNewFormat(url) ?? parseLegacyFormat(url, couple: couple) {
+            if let p = parseNewFormat(url) {
                 parsed.append(p)
+            } else if let p = parseLegacyFormat(url, couple: couple) {
+                parsed.append(p)
+                hasLegacyFiles = true
             } else {
                 let image = NSImage(contentsOf: url)
                 if let image { sourceURLByImage[ObjectIdentifier(image)] = url }
@@ -249,7 +255,7 @@ enum FolderLoader {
         // Realign any marks saved with an older split so they still attach to their person.
         summary.markedPeople = reconcileMarks(summary.markedPeople, to: people)
 
-        return LoadResult(folderURL: folderURL, people: people, tabs: tabs, notes: loadedNotes, summary: summary, otherFiles: otherFiles, sourceURLByImage: sourceURLByImage)
+        return LoadResult(folderURL: folderURL, people: people, tabs: tabs, notes: loadedNotes, summary: summary, otherFiles: otherFiles, sourceURLByImage: sourceURLByImage, hasLegacyFiles: hasLegacyFiles)
     }
 
     // MARK: - Filename Parsing

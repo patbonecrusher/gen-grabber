@@ -117,4 +117,13 @@ struct FolderLoaderTests {
         let note = try #require(result.notes.first { $0.title == "research" })
         #expect(note.content == "Some research notes")
     }
+
+    @Test("Legacy single-dash filenames set hasLegacyFiles")
+    func detectsLegacyNaming() throws {
+        let legacy = try loadWith(["1845-b-girard-joseph-d1p_12345.jpg"])
+        #expect(legacy.hasLegacyFiles)
+
+        let modern = try loadWith(["1845--b--girard-joseph--d1p_12345.png"])
+        #expect(!modern.hasLegacyFiles)
+    }
 }
