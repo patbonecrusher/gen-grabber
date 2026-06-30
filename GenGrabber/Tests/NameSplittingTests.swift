@@ -195,4 +195,24 @@ struct NameSplittingTests {
         #expect(result.people.contains { $0.lastName == "Langevin" && $0.firstName == "Michel" })
         #expect(result.people.contains { $0.lastName == "Fontaine" && $0.firstName == "Victoire" })
     }
+
+    @Test("Records that drop the 'Marie' prefix unify to the folder's canonical first name")
+    func droppedMariePrefix() throws {
+        let result = try loadFolder(
+            named: "0456-0457--dupres-charles__menard-marie-amable",
+            files: [
+                "1735-b-dupres-charles-d1p_1.jpg",
+                "1743-b-menard-amable-d1p_2.jpg",                       // wife, no "Marie"
+                "1761-w-dupres-charles-menard-marie-amable-d1p_3.jpg",  // wife, with "Marie"
+                "1826-s-menard-amable-d1p_4.jpg",                       // wife, no "Marie"
+            ]
+        )
+
+        // Two people — the wife is not split into "Amable" and "Marie Amable".
+        #expect(result.people.count == 2)
+        let wife = try #require(result.people.first { $0.gender == .female })
+        #expect(wife.lastName == "Menard")
+        #expect(wife.firstName == "Marie Amable")
+        #expect(!result.people.contains { $0.lastName == "Menard" && $0.firstName == "Amable" })
+    }
 }

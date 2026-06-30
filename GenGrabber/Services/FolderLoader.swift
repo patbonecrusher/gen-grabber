@@ -588,7 +588,23 @@ enum FolderLoader {
     private static func resolve(last: String, first: String, in couple: [CoupleMember]) -> CoupleMember? {
         let l = FilenameBuilder.normalize(last)
         let f = FilenameBuilder.normalize(first)
-        return couple.first { $0.firstNorm == f && $0.variants.contains(l) }
+        return couple.first { firstNamesMatch($0.firstNorm, f) && $0.variants.contains(l) }
+    }
+
+    // Quebec records routinely drop the baptismal prefix "Marie"/"Joseph" (e.g. "Marie Amable"
+    // recorded as "Amable"), so compare first names by their significant tokens.
+    private static let givenNamePrefixes: Set<String> = ["marie", "joseph"]
+
+    private static func significantGivenTokens(_ name: String) -> Set<String> {
+        Set(name.split(separator: "-").map { $0.lowercased() }).subtracting(givenNamePrefixes)
+    }
+
+    private static func firstNamesMatch(_ a: String, _ b: String) -> Bool {
+        if a == b { return true }
+        let sa = significantGivenTokens(a)
+        let sb = significantGivenTokens(b)
+        guard !sa.isEmpty, !sb.isEmpty else { return false }
+        return sa == sb
     }
 
     /// Creates/fetches a Person, first folding dit-alias surnames into the canonical couple member.
