@@ -54,6 +54,13 @@ struct ContentView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
+                if session.hasLegacyFiles {
+                    Label("Old naming", systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .help("This folder has records using the old single-dash naming. Saving converts them to the new -- / __ format.")
+                }
+
                 Spacer()
 
                 Button {
@@ -64,7 +71,7 @@ struct ContentView: View {
                 .controlSize(.small)
 
                 Button {
-                    if let url = session.previousFolderURL { requestNavigate(to: url) }
+                    goPreviousFolder()
                 } label: {
                     Image(systemName: "chevron.left")
                 }
@@ -81,7 +88,7 @@ struct ContentView: View {
                 }
 
                 Button {
-                    if let url = session.nextFolderURL { requestNavigate(to: url) }
+                    goNextFolder()
                 } label: {
                     Image(systemName: "chevron.right")
                 }
@@ -115,6 +122,20 @@ struct ContentView: View {
             .padding(.vertical, 8)
         }
         .frame(minWidth: 700, minHeight: 500)
+        .navigationTitle(session.currentFolderURL?.lastPathComponent ?? "Gen Grabber")
+        .background {
+            // Extra keyboard shortcuts: ⌘← / ⌘→ for previous/next folder (alongside ⌘[ / ⌘]).
+            Group {
+                Button("", action: goPreviousFolder)
+                    .keyboardShortcut(.leftArrow, modifiers: .command)
+                    .disabled(session.previousFolderURL == nil)
+                Button("", action: goNextFolder)
+                    .keyboardShortcut(.rightArrow, modifiers: .command)
+                    .disabled(session.nextFolderURL == nil)
+            }
+            .opacity(0)
+            .allowsHitTesting(false)
+        }
         .alert("Clear All?", isPresented: $showClearConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Clear All", role: .destructive) {
@@ -249,6 +270,14 @@ struct ContentView: View {
         if result.removedCount > 0 { parts.append("\(result.removedCount) moved to Trash") }
         let detail = parts.isEmpty ? "No changes" : parts.joined(separator: ", ")
         return "\(detail) in \(result.folder.lastPathComponent)/"
+    }
+
+    private func goPreviousFolder() {
+        if let url = session.previousFolderURL { requestNavigate(to: url) }
+    }
+
+    private func goNextFolder() {
+        if let url = session.nextFolderURL { requestNavigate(to: url) }
     }
 
     private func requestNavigate(to url: URL) {
