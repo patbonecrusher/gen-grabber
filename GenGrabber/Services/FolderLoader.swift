@@ -697,8 +697,15 @@ enum FolderLoader {
             let first = aliasEnd + 1 < segments.count ? Array(segments[(aliasEnd + 1)...]) : []
             return (last, first)
         }
-        // No "dit": first token is the surname, the rest the given name.
-        return ([segments[0]], Array(segments.dropFirst()))
+        // No "dit": first token is the surname — but a Saint-prefixed surname spans two tokens
+        // (e.g. "st-martin", "sainte-marie"), so keep the following token with it.
+        var lastEnd = 0
+        if saintPrefixes.contains(segments[0].lowercased()), segments.count > 1 {
+            lastEnd = 1
+        }
+        let last = Array(segments[0...lastEnd])
+        let first = lastEnd + 1 < segments.count ? Array(segments[(lastEnd + 1)...]) : []
+        return (last, first)
     }
 
     // MARK: - Name split overrides from summary.json

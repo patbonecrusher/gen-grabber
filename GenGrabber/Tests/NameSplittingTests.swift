@@ -45,6 +45,17 @@ struct NameSplittingTests {
         #expect(n.first == "madeleine")
     }
 
+    @Test("Saint-prefixed surname without dit spans two tokens")
+    func saintSurname() {
+        let a = FolderLoader.splitPersonName("st-martin-pierre-antoine")
+        #expect(a.last == "st-martin")
+        #expect(a.first == "pierre-antoine")
+
+        let b = FolderLoader.splitPersonName("sainte-marie-josephe")
+        #expect(b.last == "sainte-marie")
+        #expect(b.first == "josephe")
+    }
+
     // MARK: - summary.json overrides
 
     private func loadWith(_ filenames: [String], summaryJSON: String? = nil) throws -> FolderLoader.LoadResult {
