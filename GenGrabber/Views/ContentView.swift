@@ -71,6 +71,16 @@ struct ContentView: View {
                 .controlSize(.small)
 
                 Button {
+                    revealInFinder()
+                } label: {
+                    Image(systemName: "folder")
+                }
+                .controlSize(.small)
+                .disabled(session.currentFolderURL == nil)
+                .help(session.currentFolderURL.map { "Reveal in Finder: \($0.lastPathComponent)" }
+                    ?? "No folder open")
+
+                Button {
                     goPreviousFolder()
                 } label: {
                     Image(systemName: "chevron.left")
@@ -270,6 +280,11 @@ struct ContentView: View {
         if result.removedCount > 0 { parts.append("\(result.removedCount) moved to Trash") }
         let detail = parts.isEmpty ? "No changes" : parts.joined(separator: ", ")
         return "\(detail) in \(result.folder.lastPathComponent)/"
+    }
+
+    private func revealInFinder() {
+        guard let url = session.currentFolderURL else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
     private func goPreviousFolder() {
