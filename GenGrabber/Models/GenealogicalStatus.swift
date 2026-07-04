@@ -8,6 +8,7 @@ enum GenealogicalStatus: String, CaseIterable, Codable, Identifiable, Sendable {
     case filleAMarier = "fille_a_marier"
     case soldat = "soldat"
     case engage = "engage"
+    case acadian = "acadian"
 
     var id: String { rawValue }
 
@@ -19,6 +20,7 @@ enum GenealogicalStatus: String, CaseIterable, Codable, Identifiable, Sendable {
         case .filleAMarier: "Fille à marier"
         case .soldat: "Soldat"
         case .engage: "Engagé"
+        case .acadian: "Acadien"
         }
     }
 
@@ -30,6 +32,7 @@ enum GenealogicalStatus: String, CaseIterable, Codable, Identifiable, Sendable {
         case .filleAMarier: "Fille à marier"
         case .soldat: "Soldat"
         case .engage: "Engagé"
+        case .acadian: "Acadien"
         }
     }
 }
