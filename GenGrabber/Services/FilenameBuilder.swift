@@ -55,7 +55,7 @@ enum FilenameBuilder {
         let year = tab.year
 
         switch tab.recordType {
-        case .wedding:
+        case .wedding, .legal:
             let groom = people.first { $0.id == tab.personIDs[safe: 0] }
             let bride = people.first { $0.id == tab.personIDs[safe: 1] }
             let groomName = formatName(groom)

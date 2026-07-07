@@ -43,6 +43,7 @@ struct OtherFilesTabView: View {
                             Menu {
                                 Button("Birth") { startPromote(file, as: .birth) }
                                 Button("Wedding") { startPromote(file, as: .wedding) }
+                                Button("Legal") { startPromote(file, as: .legal) }
                                 Button("Sepulture") { startPromote(file, as: .sepulture) }
                                 Divider()
                                 Button("Obituary") { startPromote(file, as: .obituary) }

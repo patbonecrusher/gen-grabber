@@ -24,7 +24,7 @@ struct ImageColumnView: View {
         switch type {
         case .birth, .wedding, .sepulture:
             return true
-        case .obituary, .thanks:
+        case .legal, .obituary, .thanks:
             return session.tabs[tabIndex].lafranceImage != nil
         case .misc:
             return false

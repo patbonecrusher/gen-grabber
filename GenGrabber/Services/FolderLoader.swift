@@ -147,7 +147,7 @@ enum FolderLoader {
             let recordType = first.recordType
 
             switch recordType {
-            case .wedding:
+            case .wedding, .legal:
                 let groom = makePerson(
                     last: first.names[safe: 0] ?? "", first: first.names[safe: 1] ?? "",
                     defaultGender: .male, knownGender: true, couple: couple, registry: &peopleByName
@@ -215,7 +215,7 @@ enum FolderLoader {
                     // Build the record key in the same format as filenames
                     let names = first.names
                     let namesPart: String
-                    if first.recordType == .wedding && names.count == 4 {
+                    if first.recordType.isCouple && names.count == 4 {
                         namesPart = "\(names[0])-\(names[1])__\(names[2])-\(names[3])"
                     } else {
                         namesPart = names.joined(separator: "-")
@@ -294,7 +294,7 @@ enum FolderLoader {
 
         // Parse names: split on __ for wedding (person1__person2)
         let names: [String]
-        if recordType == .wedding, namesPart.contains("__") {
+        if recordType.isCouple, namesPart.contains("__") {
             let personParts = namesPart.components(separatedBy: "__")
             guard personParts.count == 2 else { return nil }
             let groom = splitPersonName(personParts[0])
@@ -436,7 +436,7 @@ enum FolderLoader {
         case .misc:
             return segments
 
-        case .wedding:
+        case .wedding, .legal:
             // Prefer the folder-name couple to find the groom/bride boundary — it handles
             // multi-word "dit" surnames the positional heuristic below cannot.
             if let names = splitLegacyWedding(segments, couple: couple) { return names }

@@ -56,6 +56,7 @@ struct TabBarView: View {
             Menu {
                 Button("Birth") { showPickerFor = .birth }
                 Button("Wedding") { showPickerFor = .wedding }
+                Button("Legal") { showPickerFor = .legal }
                 Button("Sepulture") { showPickerFor = .sepulture }
                 Divider()
                 Button("Obituary") { showPickerFor = .obituary }

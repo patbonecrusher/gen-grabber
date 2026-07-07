@@ -9,19 +9,23 @@ struct PersonPickerPopover: View {
     @State private var selectedFirst: UUID?
     @State private var selectedSecond: UUID?
 
+    private var isTwoPerson: Bool { recordType.isCouple }
     private var isWedding: Bool { recordType == .wedding }
+
+    private var firstLabel: String { isWedding ? "Groom" : "First person" }
+    private var secondLabel: String { isWedding ? "Bride" : "Second person" }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Select \(isWedding ? "Groom & Bride" : "Person")")
+            Text("Select \(isTwoPerson ? "\(firstLabel) & \(secondLabel)" : "Person")")
                 .font(.headline)
 
-            if isWedding && selectedFirst == nil {
-                Text("Select groom:")
+            if isTwoPerson && selectedFirst == nil {
+                Text("Select \(firstLabel.lowercased()):")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            } else if isWedding && selectedFirst != nil && selectedSecond == nil {
-                Text("Select bride:")
+            } else if isTwoPerson && selectedFirst != nil && selectedSecond == nil {
+                Text("Select \(secondLabel.lowercased()):")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -39,12 +43,12 @@ struct PersonPickerPopover: View {
                         Text("\(person.lastName), \(person.firstName)")
                         Spacer()
                         if selectedFirst == person.id {
-                            Text(isWedding ? "Groom" : "Selected")
+                            Text(isTwoPerson ? firstLabel : "Selected")
                                 .font(.caption2)
                                 .foregroundStyle(Color.accentColor)
                         }
                         if selectedSecond == person.id {
-                            Text("Bride")
+                            Text(secondLabel)
                                 .font(.caption2)
                                 .foregroundStyle(.pink)
                         }
@@ -63,15 +67,16 @@ struct PersonPickerPopover: View {
 
             HStack {
                 Button("Cancel") { onCancel() }
+                    .keyboardShortcut(.cancelAction)
                 Spacer()
                 Button("Create") {
-                    if isWedding, let first = selectedFirst, let second = selectedSecond {
+                    if isTwoPerson, let first = selectedFirst, let second = selectedSecond {
                         onSelect([first, second])
-                    } else if !isWedding, let first = selectedFirst {
+                    } else if !isTwoPerson, let first = selectedFirst {
                         onSelect([first])
                     }
                 }
-                .disabled(isWedding ? (selectedFirst == nil || selectedSecond == nil) : selectedFirst == nil)
+                .disabled(isTwoPerson ? (selectedFirst == nil || selectedSecond == nil) : selectedFirst == nil)
                 .buttonStyle(.borderedProminent)
             }
         }
@@ -80,11 +85,11 @@ struct PersonPickerPopover: View {
     }
 
     private func handleSelection(_ id: UUID) {
-        if !isWedding {
+        if !isTwoPerson {
             // Single person selection - toggle
             selectedFirst = (selectedFirst == id) ? nil : id
         } else {
-            // Wedding: pick groom first, then bride
+            // Two-person: pick the first person, then the second
             if selectedFirst == id {
                 selectedFirst = nil
                 selectedSecond = nil

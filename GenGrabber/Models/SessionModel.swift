@@ -79,7 +79,7 @@ final class SessionModel: @unchecked Sendable {
     }
 
     func addTab(type: RecordType, personIDs: [UUID]) {
-        if type == .wedding { updateWeddingGenders(personIDs) }
+        if type.isCouple { updateWeddingGenders(personIDs) }
         let tab = RecordTab(recordType: type, personIDs: personIDs)
         tabs.append(tab)
         selection = .record(tab.id)
@@ -89,7 +89,7 @@ final class SessionModel: @unchecked Sendable {
         guard let index = otherFiles.files.firstIndex(where: { $0.id == fileID }) else { return }
         let file = otherFiles.files.remove(at: index)
 
-        if type == .wedding { updateWeddingGenders(personIDs) }
+        if type.isCouple { updateWeddingGenders(personIDs) }
 
         let inferred = inferMetadata(from: file.filename, type: type, personIDs: personIDs)
 
@@ -197,10 +197,10 @@ final class SessionModel: @unchecked Sendable {
         let names = tab.personIDs.compactMap { person(for: $0) }
         let unsureSuffix = tab.isUnsure ? "?" : ""
         switch tab.recordType {
-        case .wedding:
+        case .wedding, .legal:
             let groom = names.first.map { $0.firstName } ?? "?"
             let bride = names.dropFirst().first.map { $0.firstName } ?? "?"
-            return "W: \(groom) + \(bride)\(unsureSuffix)"
+            return "\(tab.recordType.shortLabel): \(groom) + \(bride)\(unsureSuffix)"
         case .birth, .sepulture, .obituary, .thanks:
             let name = names.first.map { $0.firstName } ?? "?"
             return "\(tab.recordType.shortLabel): \(name)\(unsureSuffix)"

@@ -69,6 +69,26 @@ struct FolderLoaderTests {
         #expect(tab.pages.first?.recordID == "d1p_1142c0453")
     }
 
+    @Test("New format legal record splits its two parties on __")
+    func newFormatLegal() throws {
+        let result = try loadWith([
+            "1818--l--girard-joseph__vanasse-marie-anne--d1p_555.png",
+        ])
+
+        let tab = try #require(result.tabs.first)
+        #expect(tab.recordType == .legal)
+        #expect(tab.year == "1818")
+        #expect(tab.personIDs.count == 2)
+        #expect(tab.pages.first?.recordID == "d1p_555")
+
+        let first = try #require(result.people.first { $0.id == tab.personIDs[0] })
+        let second = try #require(result.people.first { $0.id == tab.personIDs[1] })
+        #expect(first.lastName == "Girard")
+        #expect(first.firstName == "Joseph")
+        #expect(second.lastName == "Vanasse")
+        #expect(second.firstName == "Marie Anne")
+    }
+
     @Test("Unrecognized files go to the Other collection")
     func unrecognizedFileGoesToOther() throws {
         let result = try loadWith([
