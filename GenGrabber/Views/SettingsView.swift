@@ -73,6 +73,7 @@ struct SettingsView: View {
                 Button("Done") { dismiss() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
+                    .keyboardShortcut(.cancelAction)
             }
         }
         .padding(20)

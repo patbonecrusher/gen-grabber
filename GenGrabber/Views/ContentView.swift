@@ -112,6 +112,7 @@ struct ContentView: View {
                     openFolder()
                 }
                 .controlSize(.small)
+                .keyboardShortcut("o", modifiers: .command)
 
                 Button("Clear All") {
                     showClearConfirmation = true
@@ -119,14 +120,12 @@ struct ContentView: View {
                 .controlSize(.small)
 
                 Button("Save All...") {
-                    if session.summary.records.isEmpty && !session.tabs.isEmpty {
-                        showMissingSummaryWarning = true
-                    } else {
-                        performSave()
-                    }
+                    requestSave()
                 }
                 .controlSize(.small)
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut("s", modifiers: .command)
+                .disabled(session.tabs.isEmpty && session.people.isEmpty && session.otherFiles.files.isEmpty)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -223,6 +222,15 @@ struct ContentView: View {
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 }
             }
+        }
+    }
+
+    /// Save entry point shared by the Save button and ⌘S: warns first when there's no summary.
+    private func requestSave() {
+        if session.summary.records.isEmpty && !session.tabs.isEmpty {
+            showMissingSummaryWarning = true
+        } else {
+            performSave()
         }
     }
 
