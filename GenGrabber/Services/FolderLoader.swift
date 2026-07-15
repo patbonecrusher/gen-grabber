@@ -147,7 +147,7 @@ enum FolderLoader {
             let recordType = first.recordType
 
             switch recordType {
-            case .wedding, .legal:
+            case .wedding:
                 let groom = makePerson(
                     last: first.names[safe: 0] ?? "", first: first.names[safe: 1] ?? "",
                     defaultGender: .male, knownGender: true, couple: couple, registry: &peopleByName
@@ -157,6 +157,23 @@ enum FolderLoader {
                     defaultGender: .female, knownGender: true, couple: couple, registry: &peopleByName
                 )
                 personIDs = [groom.id, bride.id]
+            case .legal:
+                // One or more parties, each a (last, first) pair; gender is unknown here.
+                var ids: [UUID] = []
+                var i = 0
+                while i < first.names.count {
+                    let last = first.names[safe: i] ?? ""
+                    let name = first.names[safe: i + 1] ?? ""
+                    if !last.isEmpty || !name.isEmpty {
+                        let person = makePerson(
+                            last: last, first: name, defaultGender: .male,
+                            knownGender: false, couple: couple, registry: &peopleByName
+                        )
+                        ids.append(person.id)
+                    }
+                    i += 2
+                }
+                personIDs = ids
             case .birth, .sepulture, .census, .obituary, .thanks:
                 let person = makePerson(
                     last: first.names[safe: 0] ?? "", first: first.names[safe: 1] ?? "",
@@ -213,13 +230,7 @@ enum FolderLoader {
                     page.parsedText = text
                 } else {
                     // Build the record key in the same format as filenames
-                    let names = first.names
-                    let namesPart: String
-                    if first.recordType.isCouple && names.count == 4 {
-                        namesPart = "\(names[0])-\(names[1])__\(names[2])-\(names[3])"
-                    } else {
-                        namesPart = names.joined(separator: "-")
-                    }
+                    let namesPart = filenameNamesPart(for: first.recordType, names: first.names)
                     let key = "\(first.year)--\(first.recordType.rawValue)--\(namesPart)"
                     if let text = parsedTextsByRecordKey[key] {
                         page.parsedText = text
@@ -270,7 +281,8 @@ enum FolderLoader {
         let url: URL
         let year: String
         let recordType: RecordType
-        let names: [String] // [lastName, firstName] or [groomLast, groomFirst, brideLast, brideFirst]
+        let names: [String] // flat [last, first] pairs: one for single-person, two for a
+                            // wedding, and one-or-more for a legal record
         let recordID: String
         let suffix: FileSuffix
         let isUnsure: Bool
@@ -292,14 +304,19 @@ enum FolderLoader {
         guard let recordType = RecordType(rawValue: sections[1]) else { return nil }
         let namesPart = sections[2]
 
-        // Parse names: split on __ for wedding (person1__person2)
+        // Parse names: split on __ for multi-person types (each part is one person).
+        // A wedding is exactly two; a legal record may be one or more.
         let names: [String]
-        if recordType.isCouple, namesPart.contains("__") {
+        if recordType.usesPersonSeparator, namesPart.contains("__") {
             let personParts = namesPart.components(separatedBy: "__")
-            guard personParts.count == 2 else { return nil }
-            let groom = splitPersonName(personParts[0])
-            let bride = splitPersonName(personParts[1])
-            names = [groom.last, groom.first, bride.last, bride.first]
+            if recordType == .wedding {
+                guard personParts.count == 2 else { return nil }
+            }
+            // Emit a (last, first) pair per person so the loader can chunk by two.
+            names = personParts.flatMap { part -> [String] in
+                let p = splitPersonName(part)
+                return [p.last, p.first]
+            }
         } else {
             let split = splitPersonName(namesPart)
             names = split.first.isEmpty ? [split.last] : [split.last, split.first]
@@ -428,7 +445,9 @@ enum FolderLoader {
         let segments = namesPart.split(separator: "-").map(String.init)
 
         switch recordType {
-        case .birth, .sepulture, .census, .obituary, .thanks:
+        // Legal is a new type with no legacy single-dash files, and its multi-person names
+        // can't be split without the __ separator, so treat a legacy legal name as one person.
+        case .birth, .sepulture, .census, .legal, .obituary, .thanks:
             guard segments.count >= 2 else { return segments }
             let (last, first) = splitNameSegments(segments)
             return [last.joined(separator: "-"), first.joined(separator: "-")]
@@ -436,7 +455,7 @@ enum FolderLoader {
         case .misc:
             return segments
 
-        case .wedding, .legal:
+        case .wedding:
             // Prefer the folder-name couple to find the groom/bride boundary — it handles
             // multi-word "dit" surnames the positional heuristic below cannot.
             if let names = splitLegacyWedding(segments, couple: couple) { return names }
@@ -687,6 +706,24 @@ enum FolderLoader {
     // (e.g. "dit St-Germain").
     private static let ditMarkers: Set<String> = ["dit", "dite", "ditte", "dits", "dites"]
     private static let saintPrefixes: Set<String> = ["st", "ste", "saint", "sainte"]
+
+    /// Rebuilds the "names" section of a filename from a flat [last, first, last, first, …] array,
+    /// matching how filenames are written: multi-person types join people with `__` (each person's
+    /// last-first joined by `-`); everything else joins its segments with `-`.
+    static func filenameNamesPart(for recordType: RecordType, names: [String]) -> String {
+        guard recordType.usesPersonSeparator, names.count >= 2 else {
+            return names.joined(separator: "-")
+        }
+        var people: [String] = []
+        var i = 0
+        while i < names.count {
+            let last = names[safe: i] ?? ""
+            let first = names[safe: i + 1] ?? ""
+            people.append(first.isEmpty ? last : "\(last)-\(first)")
+            i += 2
+        }
+        return people.joined(separator: "__")
+    }
 
     /// Splits a hyphen-joined person name into (lastName, firstName) as hyphen-joined lowercase
     /// parts, keeping any "dit <alias>" with the surname.

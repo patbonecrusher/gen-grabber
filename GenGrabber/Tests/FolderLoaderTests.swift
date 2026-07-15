@@ -105,6 +105,36 @@ struct FolderLoaderTests {
         #expect(second.firstName == "Marie Anne")
     }
 
+    @Test("New format legal record splits three or more parties on __")
+    func newFormatLegalMultiple() throws {
+        let result = try loadWith([
+            "1818--l--girard-joseph__vanasse-marie__benoit-vincent--d1p_777.png",
+        ])
+
+        let tab = try #require(result.tabs.first)
+        #expect(tab.recordType == .legal)
+        #expect(tab.personIDs.count == 3)
+
+        let names = tab.personIDs.compactMap { id in result.people.first { $0.id == id } }
+            .map { "\($0.lastName)/\($0.firstName)" }
+        #expect(names == ["Girard/Joseph", "Vanasse/Marie", "Benoit/Vincent"])
+    }
+
+    @Test("New format legal record with a single party parses as one person")
+    func newFormatLegalSingle() throws {
+        let result = try loadWith([
+            "1818--l--girard-joseph--d1p_888.png",
+        ])
+
+        let tab = try #require(result.tabs.first)
+        #expect(tab.recordType == .legal)
+        #expect(tab.personIDs.count == 1)
+
+        let person = try #require(result.people.first)
+        #expect(person.lastName == "Girard")
+        #expect(person.firstName == "Joseph")
+    }
+
     @Test("Unrecognized files go to the Other collection")
     func unrecognizedFileGoesToOther() throws {
         let result = try loadWith([

@@ -75,6 +75,32 @@ struct FilenameBuilderTests {
         #expect(filenames.lafrance == "1800--s--vanasse-marie-anne--d1p_99999--lafrance.png")
     }
 
+    @Test("Legal filenames join one or more parties with __")
+    func legalMultiple() {
+        let a = Person(gender: .male, lastName: "Girard", firstName: "Joseph")
+        let b = Person(gender: .female, lastName: "Vanasse", firstName: "Marie Anne")
+        let c = Person(gender: .male, lastName: "Benoit", firstName: "Vincent")
+        var tab = RecordTab(recordType: .legal, personIDs: [a.id, b.id, c.id], year: "1818")
+        tab.pages[0].recordID = "d1p_777"
+
+        let filenames = FilenameBuilder.filenames(for: tab, people: [a, b, c])
+
+        #expect(filenames.pages[0].record ==
+            "1818--l--girard-joseph__vanasse-marie-anne__benoit-vincent--d1p_777.png")
+        #expect(filenames.lafrance == nil)
+    }
+
+    @Test("Legal filename with a single party reads like a normal name")
+    func legalSingle() {
+        let a = Person(gender: .male, lastName: "Girard", firstName: "Joseph")
+        var tab = RecordTab(recordType: .legal, personIDs: [a.id], year: "1818")
+        tab.pages[0].recordID = "d1p_888"
+
+        let filenames = FilenameBuilder.filenames(for: tab, people: [a])
+
+        #expect(filenames.pages[0].record == "1818--l--girard-joseph--d1p_888.png")
+    }
+
     @Test("Obituary filenames — no lafrance")
     func obituary() {
         let person = Person(gender: .male, lastName: "Laplante", firstName: "Ernest")

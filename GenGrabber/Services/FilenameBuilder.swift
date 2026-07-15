@@ -55,12 +55,17 @@ enum FilenameBuilder {
         let year = tab.year
 
         switch tab.recordType {
-        case .wedding, .legal:
+        case .wedding:
             let groom = people.first { $0.id == tab.personIDs[safe: 0] }
             let bride = people.first { $0.id == tab.personIDs[safe: 1] }
             let groomName = formatName(groom)
             let brideName = formatName(bride)
             return "\(year)--\(type)--\(groomName)__\(brideName)"
+        case .legal:
+            // One or more parties joined by __ (a single party reads like a normal name).
+            let parts = tab.personIDs.map { id in formatName(people.first { $0.id == id }) }
+            let joined = parts.isEmpty ? formatName(nil) : parts.joined(separator: "__")
+            return "\(year)--\(type)--\(joined)"
         case .birth, .sepulture, .census, .obituary, .thanks:
             let person = people.first { $0.id == tab.personIDs[safe: 0] }
             let name = formatName(person)

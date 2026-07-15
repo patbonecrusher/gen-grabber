@@ -10,9 +10,13 @@ enum RecordType: String, CaseIterable, Sendable {
     case thanks = "th"
     case misc = "m"
 
-    /// True for record types that concern two people joined by `__` in filenames
-    /// (a wedding's groom/bride, a legal record's two parties).
-    var isCouple: Bool { self == .wedding || self == .legal }
+    /// True for record types whose filenames join several people with `__`
+    /// (a wedding's groom/bride, a legal record's one-or-more parties).
+    var usesPersonSeparator: Bool { self == .wedding || self == .legal }
+
+    /// True when the record can name more than two people (a legal act may tie together
+    /// any number of parties). Weddings and single-person records do not.
+    var allowsMultiplePeople: Bool { self == .legal }
 
     var label: String {
         switch self {
