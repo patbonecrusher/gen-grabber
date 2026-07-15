@@ -138,6 +138,36 @@ struct NameSplittingTests {
         return FolderLoader.load(from: dir)
     }
 
+    @Test("A folder spouse with no records still appears in the people list")
+    func folderSpouseWithoutRecords() throws {
+        // Only the husband has a record; the wife (Gagnon Marie) has none.
+        let result = try loadFolder(
+            named: "0100-0101--tremblay-jean__gagnon-marie",
+            files: ["1800-b-tremblay-jean-d1p_1.jpg"]
+        )
+
+        #expect(result.people.count == 2)
+        let husband = try #require(result.people.first { $0.lastName == "Tremblay" })
+        #expect(husband.firstName == "Jean")
+        #expect(husband.gender == .male)
+
+        let wife = try #require(result.people.first { $0.lastName == "Gagnon" })
+        #expect(wife.firstName == "Marie")
+        #expect(wife.gender == .female)
+    }
+
+    @Test("A folder spouse is not duplicated when they do have records")
+    func folderSpouseNotDuplicated() throws {
+        let result = try loadFolder(
+            named: "0100-0101--tremblay-jean__gagnon-marie",
+            files: [
+                "1800-b-tremblay-jean-d1p_1.jpg",
+                "1802-b-gagnon-marie-d1p_2.jpg",
+            ]
+        )
+        #expect(result.people.count == 2)
+    }
+
     @Test("dit-alias surnames across records unify to one spouse from the folder name")
     func ditAliasUnification() throws {
         // Husband recorded as "jared" in one record and "beauregard" in another; the folder

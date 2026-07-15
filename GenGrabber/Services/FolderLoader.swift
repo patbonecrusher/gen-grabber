@@ -248,12 +248,23 @@ enum FolderLoader {
             tabs.append(tab)
         }
 
-        // If folder is empty, try to populate people from the folder name
-        // Format: 410-411--lastname-firstname__lastname-firstname
         var people = Array(peopleByName.values)
-        if people.isEmpty && tabs.isEmpty {
-            let folderPeople = parseFolderName(folderURL.lastPathComponent)
-            people = folderPeople
+
+        // Always surface the people named in the folder (Format:
+        // 410-411--lastname-firstname__lastname-firstname), even when one of them has no
+        // records of their own — otherwise a spouse with no record wouldn't appear at all.
+        for member in couple {
+            let alreadyPresent = people.contains { p in
+                firstNamesMatch(member.firstNorm, FilenameBuilder.normalize(p.firstName))
+                    && member.variants.contains(FilenameBuilder.normalize(p.lastName))
+            }
+            if !alreadyPresent {
+                people.append(Person(
+                    gender: member.gender,
+                    lastName: capitalize(member.canonicalLast),
+                    firstName: capitalize(member.firstNorm)
+                ))
+            }
         }
 
         // When summary.json is present it is authoritative for the last/first split (its
@@ -504,37 +515,6 @@ enum FolderLoader {
         }
     }
 
-    // MARK: - Folder Name Parsing
-    // Format: 410-411--lastname-firstname__lastname-firstname
-    // The ahnentafel numbers before -- are ignored.
-
-    private static func parseFolderName(_ name: String) -> [Person] {
-        let sections = name.components(separatedBy: "--")
-        guard sections.count >= 2 else { return [] }
-
-        // Everything after the first -- is the names part (rejoin in case of extra --)
-        let namesPart = sections.dropFirst().joined(separator: "--")
-
-        // Split on __ for husband and wife
-        let personParts = namesPart.components(separatedBy: "__")
-        guard personParts.count == 2 else { return [] }
-
-        let husbandName = splitPersonName(personParts[0])
-        let wifeName = splitPersonName(personParts[1])
-
-        let husband = Person(
-            gender: .male,
-            lastName: capitalize(husbandName.last),
-            firstName: capitalize(husbandName.first)
-        )
-        let wife = Person(
-            gender: .female,
-            lastName: capitalize(wifeName.last),
-            firstName: capitalize(wifeName.first)
-        )
-
-        return [husband, wife]
-    }
 
     // MARK: - Helpers
 
