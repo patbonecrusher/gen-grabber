@@ -318,12 +318,11 @@ struct ContentView: View {
     }
 
     private func openFolder() {
-        if session.tabs.isEmpty && session.people.isEmpty {
-            if let result = FolderLoader.pickAndLoad() {
-                session.loadFromResult(result)
-            }
-        } else {
+        // Only warn about replacing the session when there's unsaved work to lose.
+        if session.hasUnsavedChanges {
             showOpenConfirmation = true
+        } else if let result = FolderLoader.pickAndLoad() {
+            session.loadFromResult(result)
         }
     }
 }
