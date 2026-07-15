@@ -191,6 +191,38 @@ struct NameSplittingTests {
         #expect(!result.people.contains { $0.lastName == "Lapierre" })
     }
 
+    @Test("Legacy wedding where the folder bride remarried an outside dit-alias groom")
+    func legacyWeddingRemarriedBride() throws {
+        let result = try loadFolder(
+            named: "0184-0185--chicoine-augustin__dion-dit-dutily-therese",
+            files: [
+                "1755-b-chicoine-augustin-d1p_1.jpg",
+                "1764-b-dion-therese-d1p_2.jpg",
+                "1786-w-chicoine-augustin-dion-therese-d1p_3.jpg",  // folder couple
+                // Thérèse's second marriage: the groom is an outside name with a dit alias,
+                // and the matching spouse (dion-therese) is at the END of the wedding name.
+                "1816-w-benoit-dit-livernoit-vincent-dion-therese-d1p_4.jpg",
+            ]
+        )
+
+        // Exactly three people: Augustin, Thérèse, and her second husband Vincent.
+        #expect(result.people.count == 3)
+
+        let vincent = try #require(result.people.first { $0.firstName == "Vincent" })
+        #expect(vincent.lastName == "Benoit dit Livernoit")
+        #expect(vincent.gender == .male)
+
+        // Thérèse is unified to one person across both weddings + her birth.
+        let therese = try #require(result.people.first { $0.firstName == "Therese" })
+        #expect(therese.lastName == "Dion dit Dutily")
+        #expect(therese.gender == .female)
+
+        // None of the old broken splits.
+        #expect(!result.people.contains { $0.firstName == "dit" })
+        #expect(!result.people.contains { $0.lastName == "Livernoit" })
+        #expect(!result.people.contains { $0.lastName == "Benoit" })
+    }
+
     @Test("Legacy record with a non-d1p ID (FamilySearch ARK) parses, not dumped to Other")
     func nonD1pRecordID() throws {
         let result = try loadFolder(

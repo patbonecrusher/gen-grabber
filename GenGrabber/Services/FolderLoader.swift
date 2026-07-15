@@ -565,29 +565,42 @@ enum FolderLoader {
     }
 
     /// Splits a legacy wedding name ("groom…bride…", no separator) using the folder couple to find
-    /// the boundary: the longest "<variant>-<firstname>" prefix that matches a spouse is the first
-    /// person; the remainder is the other. Returns nil when no couple member matches.
+    /// the boundary: the longest "<variant>-<firstname>" that matches a spouse at either end of the
+    /// name anchors the split; the remainder is the other spouse. This handles a folder spouse who
+    /// remarried, where the *known* person is the bride (a suffix) and the groom is an outside name
+    /// carrying its own "dit" alias. Returns nil when no couple member matches.
     private static func splitLegacyWedding(_ segments: [String], couple: [CoupleMember]) -> [String]? {
         guard !couple.isEmpty else { return nil }
         let namesPart = segments.joined(separator: "-")
 
-        var bestCandidate: String?
-        var bestMember: CoupleMember?
+        var best: (candidate: String, member: CoupleMember, atStart: Bool)?
         for member in couple {
             for variant in member.variants {
                 let candidate = "\(variant)-\(member.firstNorm)"
-                guard namesPart == candidate || namesPart.hasPrefix(candidate + "-") else { continue }
-                if bestCandidate == nil || candidate.count > bestCandidate!.count {
-                    bestCandidate = candidate
-                    bestMember = member
+                let atStart: Bool
+                if namesPart == candidate || namesPart.hasPrefix(candidate + "-") {
+                    atStart = true
+                } else if namesPart.hasSuffix("-" + candidate) {
+                    atStart = false
+                } else {
+                    continue
+                }
+                if best == nil || candidate.count > best!.candidate.count {
+                    best = (candidate, member, atStart)
                 }
             }
         }
-        guard let candidate = bestCandidate, let member = bestMember else { return nil }
+        guard let match = best else { return nil }
 
-        let remainder = namesPart == candidate ? "" : String(namesPart.dropFirst(candidate.count + 1))
-        let spouse2 = splitPersonName(remainder)
-        return [member.canonicalLast, member.firstNorm, spouse2.last, spouse2.first]
+        if match.atStart {
+            let remainder = namesPart == match.candidate ? "" : String(namesPart.dropFirst(match.candidate.count + 1))
+            let spouse2 = splitPersonName(remainder)
+            return [match.member.canonicalLast, match.member.firstNorm, spouse2.last, spouse2.first]
+        } else {
+            let remainder = String(namesPart.dropLast(match.candidate.count + 1))
+            let spouse1 = splitPersonName(remainder)
+            return [spouse1.last, spouse1.first, match.member.canonicalLast, match.member.firstNorm]
+        }
     }
 
     /// Returns the couple member a record name belongs to (matching first name + a surname variant).
