@@ -45,6 +45,7 @@ struct OtherFilesTabView: View {
                                 Button("Wedding") { startPromote(file, as: .wedding) }
                                 Button("Legal") { startPromote(file, as: .legal) }
                                 Button("Sepulture") { startPromote(file, as: .sepulture) }
+                                Button("Census") { startPromote(file, as: .census) }
                                 Divider()
                                 Button("Obituary") { startPromote(file, as: .obituary) }
                                 Button("Thanks") { startPromote(file, as: .thanks) }

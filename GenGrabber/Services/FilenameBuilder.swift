@@ -61,7 +61,7 @@ enum FilenameBuilder {
             let groomName = formatName(groom)
             let brideName = formatName(bride)
             return "\(year)--\(type)--\(groomName)__\(brideName)"
-        case .birth, .sepulture, .obituary, .thanks:
+        case .birth, .sepulture, .census, .obituary, .thanks:
             let person = people.first { $0.id == tab.personIDs[safe: 0] }
             let name = formatName(person)
             return "\(year)--\(type)--\(name)"

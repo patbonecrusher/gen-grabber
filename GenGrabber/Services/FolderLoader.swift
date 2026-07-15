@@ -157,7 +157,7 @@ enum FolderLoader {
                     defaultGender: .female, knownGender: true, couple: couple, registry: &peopleByName
                 )
                 personIDs = [groom.id, bride.id]
-            case .birth, .sepulture, .obituary, .thanks:
+            case .birth, .sepulture, .census, .obituary, .thanks:
                 let person = makePerson(
                     last: first.names[safe: 0] ?? "", first: first.names[safe: 1] ?? "",
                     defaultGender: .male, // Default, corrected if seen in a wedding or matched to the couple
@@ -428,7 +428,7 @@ enum FolderLoader {
         let segments = namesPart.split(separator: "-").map(String.init)
 
         switch recordType {
-        case .birth, .sepulture, .obituary, .thanks:
+        case .birth, .sepulture, .census, .obituary, .thanks:
             guard segments.count >= 2 else { return segments }
             let (last, first) = splitNameSegments(segments)
             return [last.joined(separator: "-"), first.joined(separator: "-")]

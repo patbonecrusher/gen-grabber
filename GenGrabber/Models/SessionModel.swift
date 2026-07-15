@@ -201,7 +201,7 @@ final class SessionModel: @unchecked Sendable {
             let groom = names.first.map { $0.firstName } ?? "?"
             let bride = names.dropFirst().first.map { $0.firstName } ?? "?"
             return "\(tab.recordType.shortLabel): \(groom) + \(bride)\(unsureSuffix)"
-        case .birth, .sepulture, .obituary, .thanks:
+        case .birth, .sepulture, .census, .obituary, .thanks:
             let name = names.first.map { $0.firstName } ?? "?"
             return "\(tab.recordType.shortLabel): \(name)\(unsureSuffix)"
         case .misc:

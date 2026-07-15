@@ -69,6 +69,22 @@ struct FolderLoaderTests {
         #expect(tab.pages.first?.recordID == "d1p_1142c0453")
     }
 
+    @Test("New format census parses as a single-person record")
+    func newFormatCensus() throws {
+        let result = try loadWith([
+            "1851--c--girard-joseph--census-1851.png",
+        ])
+
+        let tab = try #require(result.tabs.first)
+        #expect(tab.recordType == .census)
+        #expect(tab.year == "1851")
+        #expect(tab.personIDs.count == 1)
+
+        let person = try #require(result.people.first)
+        #expect(person.lastName == "Girard")
+        #expect(person.firstName == "Joseph")
+    }
+
     @Test("New format legal record splits its two parties on __")
     func newFormatLegal() throws {
         let result = try loadWith([
