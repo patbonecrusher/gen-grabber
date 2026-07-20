@@ -7,6 +7,7 @@ enum FolderLoader {
         var people: [Person]
         var tabs: [RecordTab]
         var notes: [Note]
+        var todos: [TodoItem]
         var summary: SessionSummary
         var otherFiles: OtherFilesCollection
         /// Maps each loaded image (by instance identity) back to the file it came from,
@@ -65,6 +66,9 @@ enum FolderLoader {
         }
         // The default "notes" placeholder and the per-person notes are added below, once the
         // people list is known.
+
+        // Load the Markdown checklist if present
+        let todos = TodoFile.load(from: folderURL)
 
         // Load summary JSON if present
         let jsonURL = folderURL.appendingPathComponent("summary.json")
@@ -290,7 +294,7 @@ enum FolderLoader {
             loadedNotes = [Note(title: "notes")]
         }
 
-        return LoadResult(folderURL: folderURL, people: people, tabs: tabs, notes: loadedNotes, summary: summary, otherFiles: otherFiles, sourceURLByImage: sourceURLByImage, hasLegacyFiles: hasLegacyFiles)
+        return LoadResult(folderURL: folderURL, people: people, tabs: tabs, notes: loadedNotes, todos: todos, summary: summary, otherFiles: otherFiles, sourceURLByImage: sourceURLByImage, hasLegacyFiles: hasLegacyFiles)
     }
 
     // MARK: - Filename Parsing

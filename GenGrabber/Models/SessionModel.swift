@@ -3,6 +3,7 @@ import SwiftUI
 enum TabSelection: Equatable {
     case record(UUID)
     case notes
+    case todo
     case summary
     case other
 }
@@ -14,6 +15,8 @@ final class SessionModel: @unchecked Sendable {
     var people: [Person] = [] { didSet { if people != oldValue { markDirty() } } }
     var tabs: [RecordTab] = [] { didSet { markDirty() } }
     var notes: [Note] = [Note(title: "notes")] { didSet { if notes != oldValue { markDirty() } } }
+    /// Follow-up tasks for the open folder, saved as a Markdown checklist (todo.md).
+    var todos: [TodoItem] = [] { didSet { if todos != oldValue { markDirty() } } }
     var selection: TabSelection = .summary
     var summary: SessionSummary = SessionSummary() { didSet { if summary != oldValue { markDirty() } } }
     var otherFiles = OtherFilesCollection() { didSet { markDirty() } }
@@ -223,6 +226,25 @@ final class SessionModel: @unchecked Sendable {
         notes.removeAll { $0.id == id }
     }
 
+    // MARK: - Todos (persisted as todo.md)
+
+    /// Number of todos still to do — drives the badge on the Todo tab.
+    var openTodoCount: Int {
+        todos.filter { !$0.done && !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count
+    }
+
+    func addTodo() {
+        todos.append(TodoItem())
+    }
+
+    func removeTodo(_ id: UUID) {
+        todos.removeAll { $0.id == id }
+    }
+
+    func clearCompletedTodos() {
+        todos.removeAll { $0.done }
+    }
+
     // MARK: - Genealogical status marks (name-keyed, persisted in summary.markedPeople)
 
     private func markKey(last: String, first: String) -> String {
@@ -284,6 +306,7 @@ final class SessionModel: @unchecked Sendable {
         people = result.people
         tabs = result.tabs
         notes = result.notes
+        todos = result.todos
         summary = result.summary
         otherFiles = result.otherFiles
         sourceURLByImage = result.sourceURLByImage
@@ -297,6 +320,7 @@ final class SessionModel: @unchecked Sendable {
         people.removeAll()
         tabs.removeAll()
         notes = [Note(title: "notes")]
+        todos = []
         summary = SessionSummary()
         otherFiles = OtherFilesCollection()
         sourceURLByImage = [:]

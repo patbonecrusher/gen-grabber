@@ -67,6 +67,9 @@ struct SessionSummary: Codable, Sendable, Equatable {
         self.markedPeople = markedPeople
     }
 
+    /// True when there is nothing worth writing a summary.json for.
+    var isEmpty: Bool { records.isEmpty && markedPeople.isEmpty }
+
     private enum CodingKeys: String, CodingKey {
         case records
         case markedPeople

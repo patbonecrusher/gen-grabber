@@ -38,6 +38,8 @@ struct ContentView: View {
                     }
                 case .notes:
                     NotesTabView(session: session)
+                case .todo:
+                    TodoTabView(session: session)
                 case .summary:
                     SummaryTabView(session: session, aiSettings: aiSettings)
                 case .other:
@@ -125,7 +127,8 @@ struct ContentView: View {
                 .controlSize(.small)
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut("s", modifiers: .command)
-                .disabled(session.tabs.isEmpty && session.people.isEmpty && session.otherFiles.files.isEmpty)
+                .disabled(session.tabs.isEmpty && session.people.isEmpty
+                    && session.otherFiles.files.isEmpty && session.todos.isEmpty)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)

@@ -115,11 +115,17 @@ enum FileSaver {
             planText(note.content, named: note.filename)
         }
 
+        // Todo checklist
+        if let markdown = TodoFile.render(session.todos) {
+            planText(markdown, named: TodoFile.filename)
+        }
+
         // Summary JSON
-        if !session.summary.records.isEmpty || !session.summary.markedPeople.isEmpty {
+        let summary = session.summary
+        if !summary.isEmpty {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            if let jsonData = try? encoder.encode(session.summary) {
+            if let jsonData = try? encoder.encode(summary) {
                 let url = folder.appendingPathComponent("summary.json")
                 writes.append(PlannedWrite(url: url, data: jsonData, kind: changeKind(of: jsonData, comparedToFileAt: url)))
             }
@@ -146,7 +152,8 @@ enum FileSaver {
         }
         total += session.otherFiles.files.count
         total += session.notes.filter { !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count
-        if !session.summary.records.isEmpty || !session.summary.markedPeople.isEmpty { total += 1 }
+        if TodoFile.render(session.todos) != nil { total += 1 }
+        if !session.summary.isEmpty { total += 1 }
         return total
     }
 

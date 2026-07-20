@@ -29,6 +29,16 @@ struct TabBarView: View {
                 onClose: {}
             )
 
+            // Todo tab — tinted orange while tasks are still open.
+            TabButton(
+                label: session.openTodoCount > 0 ? "To Do (\(session.openTodoCount))" : "To Do",
+                isSelected: session.selection == .todo,
+                isCloseable: false,
+                tint: session.openTodoCount > 0 ? .orange : nil,
+                onSelect: { session.selection = .todo },
+                onClose: {}
+            )
+
             // Summary tab — tinted red when records exist but no summary was generated.
             TabButton(
                 label: "Summary",
