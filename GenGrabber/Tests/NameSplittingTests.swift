@@ -156,6 +156,36 @@ struct NameSplittingTests {
         #expect(wife.gender == .female)
     }
 
+    @Test("An empty note is auto-created for each person, titled by name")
+    func autoNotePerPerson() throws {
+        let result = try loadFolder(
+            named: "0100-0101--tremblay-jean__gagnon-marie",
+            files: ["1800-b-tremblay-jean-d1p_1.jpg"]  // only Jean has a record
+        )
+
+        // A note per person (both spouses), even the one with no records.
+        let jean = try #require(result.notes.first { $0.title == "tremblay-jean" })
+        #expect(jean.content.isEmpty)
+        let marie = try #require(result.notes.first { $0.title == "gagnon-marie" })
+        #expect(marie.content.isEmpty)
+    }
+
+    @Test("An existing note for a person is reused, not duplicated")
+    func autoNoteReusesExisting() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gengrabber-notes-\(UUID().uuidString)/0100-0101--tremblay-jean__gagnon-marie")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir.deletingLastPathComponent()) }
+        try Data().write(to: dir.appendingPathComponent("1800-b-tremblay-jean-d1p_1.jpg"))
+        try "Born in Sorel.".write(to: dir.appendingPathComponent("tremblay-jean.txt"), atomically: true, encoding: .utf8)
+
+        let result = FolderLoader.load(from: dir)
+
+        let jeanNotes = result.notes.filter { $0.title == "tremblay-jean" }
+        #expect(jeanNotes.count == 1)
+        #expect(jeanNotes.first?.content == "Born in Sorel.")
+    }
+
     @Test("A folder spouse is not duplicated when they do have records")
     func folderSpouseNotDuplicated() throws {
         let result = try loadFolder(

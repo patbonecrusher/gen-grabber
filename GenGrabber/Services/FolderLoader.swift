@@ -63,9 +63,8 @@ enum FolderLoader {
                 loadedNotes.append(Note(title: title, content: content))
             }
         }
-        if loadedNotes.isEmpty {
-            loadedNotes = [Note(title: "notes")]
-        }
+        // The default "notes" placeholder and the per-person notes are added below, once the
+        // people list is known.
 
         // Load summary JSON if present
         let jsonURL = folderURL.appendingPathComponent("summary.json")
@@ -276,6 +275,20 @@ enum FolderLoader {
         }
         // Realign any marks saved with an older split so they still attach to their person.
         summary.markedPeople = reconcileMarks(summary.markedPeople, to: people)
+
+        // Auto-create an (empty) note for each person so they don't have to be added and
+        // renamed by hand. Empty notes aren't written to disk — they're regenerated here on
+        // every load — so this never clutters the folder; a note persists once it has content.
+        for person in people {
+            let title = noteTitle(for: person)
+            guard !title.isEmpty else { continue }
+            let exists = loadedNotes.contains { $0.title.caseInsensitiveCompare(title) == .orderedSame }
+            if !exists { loadedNotes.append(Note(title: title)) }
+        }
+        // Fall back to a single blank note only when there is nothing else at all.
+        if loadedNotes.isEmpty {
+            loadedNotes = [Note(title: "notes")]
+        }
 
         return LoadResult(folderURL: folderURL, people: people, tabs: tabs, notes: loadedNotes, summary: summary, otherFiles: otherFiles, sourceURLByImage: sourceURLByImage, hasLegacyFiles: hasLegacyFiles)
     }
@@ -686,6 +699,19 @@ enum FolderLoader {
     // (e.g. "dit St-Germain").
     private static let ditMarkers: Set<String> = ["dit", "dite", "ditte", "dits", "dites"]
     private static let saintPrefixes: Set<String> = ["st", "ste", "saint", "sainte"]
+
+    /// The note title (and hence filename) for a person, in the app's lowercase-hyphenated
+    /// style, e.g. "tremblay-jean" → tremblay-jean.txt.
+    static func noteTitle(for person: Person) -> String {
+        let last = FilenameBuilder.normalize(person.lastName)
+        let first = FilenameBuilder.normalize(person.firstName)
+        switch (last.isEmpty, first.isEmpty) {
+        case (false, false): return "\(last)-\(first)"
+        case (false, true): return last
+        case (true, false): return first
+        case (true, true): return ""
+        }
+    }
 
     /// Rebuilds the "names" section of a filename from a flat [last, first, last, first, …] array,
     /// matching how filenames are written: multi-person types join people with `__` (each person's
