@@ -39,6 +39,17 @@ struct TabBarView: View {
                 onClose: {}
             )
 
+            // Lineage tab — only when the folder shipped a lineage.txt.
+            if !session.lineage.isEmpty {
+                TabButton(
+                    label: "Lineage",
+                    isSelected: session.selection == .lineage,
+                    isCloseable: false,
+                    onSelect: { session.selection = .lineage },
+                    onClose: {}
+                )
+            }
+
             // Summary tab — tinted red when records exist but no summary was generated.
             TabButton(
                 label: "Summary",

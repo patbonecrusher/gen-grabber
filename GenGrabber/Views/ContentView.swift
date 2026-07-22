@@ -40,6 +40,8 @@ struct ContentView: View {
                     NotesTabView(session: session)
                 case .todo:
                     TodoTabView(session: session)
+                case .lineage:
+                    LineageTabView(lineage: session.lineage)
                 case .summary:
                     SummaryTabView(session: session, aiSettings: aiSettings)
                 case .other:

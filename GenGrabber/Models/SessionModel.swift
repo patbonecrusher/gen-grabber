@@ -4,6 +4,7 @@ enum TabSelection: Equatable {
     case record(UUID)
     case notes
     case todo
+    case lineage
     case summary
     case other
 }
@@ -17,6 +18,8 @@ final class SessionModel: @unchecked Sendable {
     var notes: [Note] = [Note(title: "notes")] { didSet { if notes != oldValue { markDirty() } } }
     /// Follow-up tasks for the open folder, saved as a Markdown checklist (todo.md).
     var todos: [TodoItem] = [] { didSet { if todos != oldValue { markDirty() } } }
+    /// The descent chain read from lineage.txt. Read-only, so it never marks the session dirty.
+    var lineage = LineageChain(rootName: "", entries: [])
     var selection: TabSelection = .summary
     var summary: SessionSummary = SessionSummary() { didSet { if summary != oldValue { markDirty() } } }
     var otherFiles = OtherFilesCollection() { didSet { markDirty() } }
@@ -307,6 +310,7 @@ final class SessionModel: @unchecked Sendable {
         tabs = result.tabs
         notes = result.notes
         todos = result.todos
+        lineage = result.lineage
         summary = result.summary
         otherFiles = result.otherFiles
         sourceURLByImage = result.sourceURLByImage
@@ -321,6 +325,7 @@ final class SessionModel: @unchecked Sendable {
         tabs.removeAll()
         notes = [Note(title: "notes")]
         todos = []
+        lineage = LineageChain(rootName: "", entries: [])
         summary = SessionSummary()
         otherFiles = OtherFilesCollection()
         sourceURLByImage = [:]

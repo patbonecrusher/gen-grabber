@@ -8,6 +8,7 @@ enum FolderLoader {
         var tabs: [RecordTab]
         var notes: [Note]
         var todos: [TodoItem]
+        var lineage: LineageChain
         var summary: SessionSummary
         var otherFiles: OtherFilesCollection
         /// Maps each loaded image (by instance identity) back to the file it came from,
@@ -69,6 +70,10 @@ enum FolderLoader {
         }
         // The default "notes" placeholder and the per-person notes are added below, once the
         // people list is known.
+
+        // The lineage descent gets its own tab, so pull it out of the notes list.
+        let lineage = LineageParser.load(from: folderURL)
+        loadedNotes.removeAll { $0.title.lowercased() == "lineage" }
 
         // Load the Markdown checklist if present
         let todos = TodoFile.load(from: folderURL)
@@ -297,7 +302,7 @@ enum FolderLoader {
             loadedNotes = [Note(title: "notes")]
         }
 
-        return LoadResult(folderURL: folderURL, people: people, tabs: tabs, notes: loadedNotes, todos: todos, summary: summary, otherFiles: otherFiles, sourceURLByImage: sourceURLByImage, hasLegacyFiles: hasLegacyFiles)
+        return LoadResult(folderURL: folderURL, people: people, tabs: tabs, notes: loadedNotes, todos: todos, lineage: lineage, summary: summary, otherFiles: otherFiles, sourceURLByImage: sourceURLByImage, hasLegacyFiles: hasLegacyFiles)
     }
 
     // MARK: - Filename Parsing
