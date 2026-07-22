@@ -56,12 +56,15 @@ enum FolderLoader {
         // Tracks which file each loaded image came from (keyed by instance identity).
         var sourceURLByImage: [ObjectIdentifier: URL] = [:]
 
-        // Load note .txt files (excluding --parsed.txt and summary.json)
+        // Load note files — .md and .txt — excluding --parsed.txt, summary.json, and the todo
+        // checklist. Each keeps its own extension so an existing lineage.txt is never rewritten
+        // as lineage.md.
         var loadedNotes: [Note] = []
-        for url in files where url.pathExtension.lowercased() == "txt" && !url.lastPathComponent.contains("--parsed") {
+        for url in files where isNoteFile(url) {
             if let content = try? String(contentsOf: url, encoding: .utf8) {
                 let title = url.deletingPathExtension().lastPathComponent
-                loadedNotes.append(Note(title: title, content: content))
+                loadedNotes.append(Note(title: title, content: content,
+                                        fileExtension: url.pathExtension.lowercased()))
             }
         }
         // The default "notes" placeholder and the per-person notes are added below, once the
@@ -704,8 +707,17 @@ enum FolderLoader {
     private static let ditMarkers: Set<String> = ["dit", "dite", "ditte", "dits", "dites"]
     private static let saintPrefixes: Set<String> = ["st", "ste", "saint", "sainte"]
 
+    /// True for a free-text note file: Markdown, or a plain .txt from before notes were
+    /// Markdown. Parsed-record text, the todo checklist, and summary.json are not notes.
+    private static func isNoteFile(_ url: URL) -> Bool {
+        let ext = url.pathExtension.lowercased()
+        guard ext == "md" || ext == "txt" else { return false }
+        guard !url.lastPathComponent.contains("--parsed") else { return false }
+        return url.lastPathComponent.lowercased() != TodoFile.filename
+    }
+
     /// The note title (and hence filename) for a person, in the app's lowercase-hyphenated
-    /// style, e.g. "tremblay-jean" → tremblay-jean.txt.
+    /// style, e.g. "tremblay-jean" → tremblay-jean.md.
     static func noteTitle(for person: Person) -> String {
         let last = FilenameBuilder.normalize(person.lastName)
         let first = FilenameBuilder.normalize(person.firstName)

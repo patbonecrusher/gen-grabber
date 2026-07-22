@@ -135,19 +135,6 @@ struct ContentView: View {
         }
         .frame(minWidth: 700, minHeight: 500)
         .navigationTitle(session.currentFolderURL?.lastPathComponent ?? "Gen Grabber")
-        .background {
-            // Extra keyboard shortcuts: ⌘← / ⌘→ for previous/next folder (alongside ⌘[ / ⌘]).
-            Group {
-                Button("", action: goPreviousFolder)
-                    .keyboardShortcut(.leftArrow, modifiers: .command)
-                    .disabled(session.previousFolderURL == nil)
-                Button("", action: goNextFolder)
-                    .keyboardShortcut(.rightArrow, modifiers: .command)
-                    .disabled(session.nextFolderURL == nil)
-            }
-            .opacity(0)
-            .allowsHitTesting(false)
-        }
         .alert("Clear All?", isPresented: $showClearConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Clear All", role: .destructive) {

@@ -3,6 +3,7 @@ import SwiftUI
 struct NotesTabView: View {
     @Bindable var session: SessionModel
     @State private var selectedNoteID: UUID?
+    @State private var isPreviewing = false
 
     var body: some View {
         HSplitView {
@@ -58,14 +59,34 @@ struct NotesTabView: View {
                         TextField("Note title (used as filename)", text: $session.notes[noteIndex].title)
                             .textFieldStyle(.roundedBorder)
                             .frame(maxWidth: 300)
+
+                        Spacer()
+
+                        Picker("", selection: $isPreviewing) {
+                            Text("Edit").tag(false)
+                            Text("Preview").tag(true)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .fixedSize()
                     }
 
-                    TextEditor(text: $session.notes[noteIndex].content)
-                        .font(.body)
-                        .scrollContentBackground(.hidden)
-                        .padding(8)
-                        .background(Color(.windowBackgroundColor).opacity(0.5))
+                    if isPreviewing {
+                        ScrollView {
+                            MarkdownPreview(text: session.notes[noteIndex].content)
+                                .padding(14)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .background(MarkdownPreview.pageBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
+                    } else {
+                        TextEditor(text: $session.notes[noteIndex].content)
+                            .font(.body.monospaced())
+                            .scrollContentBackground(.hidden)
+                            .padding(8)
+                            .background(Color(.windowBackgroundColor).opacity(0.5))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
 
                     Text("Saved as \(session.notes[noteIndex].filename)")
                         .font(.caption)
