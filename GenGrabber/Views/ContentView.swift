@@ -137,6 +137,13 @@ struct ContentView: View {
         }
         .frame(minWidth: 700, minHeight: 500)
         .navigationTitle(session.currentFolderURL?.lastPathComponent ?? "Gen Grabber")
+        .onOpenURL { url in
+            // Folder handed to us by Finder (right-click → Open With → Gen Grabber). Load it
+            // the same way as sibling navigation: straight in when clean, with a discard
+            // prompt when there are unsaved edits.
+            guard url.hasDirectoryPath else { return }
+            requestNavigate(to: url)
+        }
         .alert("Clear All?", isPresented: $showClearConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Clear All", role: .destructive) {
