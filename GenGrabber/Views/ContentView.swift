@@ -138,10 +138,15 @@ struct ContentView: View {
         .frame(minWidth: 700, minHeight: 500)
         .navigationTitle(session.currentFolderURL?.lastPathComponent ?? "Gen Grabber")
         .onOpenURL { url in
-            // Folder handed to us by Finder (right-click → Open With → Gen Grabber). Load it
-            // the same way as sibling navigation: straight in when clean, with a discard
-            // prompt when there are unsaved edits.
+            // Folder handed to us by Finder (Quick Action / drop on the app icon). Opening
+            // already activated our single window, so if it's the folder we're showing there's
+            // nothing to do — don't reload or prompt. Otherwise load it like sibling navigation:
+            // straight in when clean, with a discard prompt when there are unsaved edits.
             guard url.hasDirectoryPath else { return }
+            if let current = session.currentFolderURL,
+               current.standardizedFileURL == url.standardizedFileURL {
+                return
+            }
             requestNavigate(to: url)
         }
         .alert("Clear All?", isPresented: $showClearConfirmation) {
